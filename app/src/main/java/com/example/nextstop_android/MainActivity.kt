@@ -3,7 +3,11 @@ package com.example.nextstop_android
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import com.example.nextstop_android.ui.stepper.StepperScreen
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
+import com.example.nextstop_android.navigation.NextStopNavGraph
 import com.example.nextstop_android.ui.theme.NextStopAndroidTheme
 
 class MainActivity : ComponentActivity() {
@@ -11,7 +15,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             NextStopAndroidTheme {
-                StepperScreen()
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    NextStopNavGraph()
+                }
             }
         }
     }
