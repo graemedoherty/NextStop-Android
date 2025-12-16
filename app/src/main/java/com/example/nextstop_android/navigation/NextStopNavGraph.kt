@@ -1,6 +1,8 @@
 package com.example.nextstop_android.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -15,6 +17,7 @@ sealed class Route(val route: String) {
 @Composable
 fun NextStopNavGraph() {
     val navController = rememberNavController()
+    var destinationLocation = remember { mutableStateOf<Pair<Double, Double>?>(null) }
 
     NavHost(
         navController = navController,
@@ -24,6 +27,9 @@ fun NextStopNavGraph() {
             StepperScreen(
                 onAlarmCreated = {
                     navController.navigate(Route.Map.route)
+                },
+                onDestinationSelected = { latitude, longitude ->
+                    destinationLocation.value = Pair(latitude, longitude)
                 }
             )
         }
@@ -32,7 +38,8 @@ fun NextStopNavGraph() {
             MapsScreen(
                 onBack = {
                     navController.popBackStack()
-                }
+                },
+                destinationLocation = destinationLocation.value
             )
         }
     }

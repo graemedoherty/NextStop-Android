@@ -9,19 +9,42 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
 import com.google.maps.android.compose.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapsScreen(
     onBack: () -> Unit,
+    destinationLocation: Pair<Double, Double>? = null,
     viewModel: MapViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     val userLocation = LatLng(53.4509, -6.1501)
+    val destinationLatLng = destinationLocation?.let { LatLng(it.first, it.second) }
+
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(userLocation, 12f)
+    }
+
+    // Effect to zoom to bounds when destination changes
+    LaunchedEffect(destinationLatLng) {
+        if (destinationLatLng != null) {
+            val bounds = LatLngBounds.builder()
+                .include(userLocation)
+                .include(destinationLatLng)
+                .build()
+
+            // Animate camera to show both markers with padding
+            cameraPositionState.animate(
+                update = com.google.android.gms.maps.CameraUpdateFactory.newLatLngBounds(
+                    bounds,
+                    100 // padding in pixels
+                ),
+                durationMs = 1000
+            )
+        }
     }
 
     // Map takes full screen
@@ -38,6 +61,15 @@ fun MapsScreen(
             title = "Your Location",
             snippet = "Current position"
         )
+
+        // Destination marker (if available)
+        if (destinationLatLng != null) {
+            Marker(
+                state = rememberMarkerState(position = destinationLatLng),
+                title = "Destination Station",
+                snippet = "Selected station"
+            )
+        }
 
         // Add markers for stations
         uiState.stations.forEach { station ->

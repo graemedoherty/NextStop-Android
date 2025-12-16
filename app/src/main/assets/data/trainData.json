@@ -1,0 +1,837 @@
+[
+  {
+    "lat": "54.6123",
+    "long": "-5.91744",
+    "destination": "Belfast"
+  },
+  {
+    "lat": "54.514",
+    "long": "-6.04327",
+    "destination": "Lisburn"
+  },
+  {
+    "lat": "54.4672",
+    "long": "-6.33547",
+    "destination": "Lurgan"
+  },
+  {
+    "lat": "54.4295",
+    "long": "-6.43868",
+    "destination": "Portadown"
+  },
+  {
+    "lat": "54.2723",
+    "long": "-8.48249",
+    "destination": "Sligo"
+  },
+  {
+    "lat": "54.1911",
+    "long": "-6.36225",
+    "destination": "Newry"
+  },
+  {
+    "lat": "54.1871",
+    "long": "-8.49453",
+    "destination": "Collooney"
+  },
+  {
+    "lat": "54.1085",
+    "long": "-9.16146",
+    "destination": "Ballina"
+  },
+  {
+    "lat": "54.0887",
+    "long": "-8.52088",
+    "destination": "Ballymote"
+  },
+  {
+    "lat": "54.0007",
+    "long": "-6.41291",
+    "destination": "Dundalk"
+  },
+  {
+    "lat": "53.983",
+    "long": "-9.1364",
+    "destination": "Foxford"
+  },
+  {
+    "lat": "53.9676",
+    "long": "-8.30438",
+    "destination": "Boyle"
+  },
+  {
+    "lat": "53.9383",
+    "long": "-8.10657",
+    "destination": "Carrick on Shannon"
+  },
+  {
+    "lat": "53.8591",
+    "long": "-7.9164",
+    "destination": "Dromod"
+  },
+  {
+    "lat": "53.8471",
+    "long": "-9.2873",
+    "destination": "Castlebar"
+  },
+  {
+    "lat": "53.828",
+    "long": "-9.19296",
+    "destination": "Manulla Junction"
+  },
+  {
+    "lat": "53.7955",
+    "long": "-9.50885",
+    "destination": "Westport"
+  },
+  {
+    "lat": "53.7616",
+    "long": "-8.7584",
+    "destination": "Ballyhaunis"
+  },
+  {
+    "lat": "53.7612",
+    "long": "-8.48448",
+    "destination": "Castlerea"
+  },
+  {
+    "lat": "53.7243",
+    "long": "-7.79574",
+    "destination": "Longford"
+  },
+  {
+    "lat": "53.7204",
+    "long": "-9.00222",
+    "destination": "Claremorris"
+  },
+  {
+    "lat": "53.712",
+    "long": "-6.33538",
+    "destination": "Drogheda"
+  },
+  {
+    "lat": "53.6888",
+    "long": "-7.60299",
+    "destination": "Edgeworthstown"
+  },
+  {
+    "lat": "53.6794",
+    "long": "-6.24253",
+    "destination": "Laytown"
+  },
+  {
+    "lat": "53.638",
+    "long": "-6.21705",
+    "destination": "Gormanston"
+  },
+  {
+    "lat": "53.6243",
+    "long": "-8.19631",
+    "destination": "Roscommon"
+  },
+  {
+    "lat": "53.6118",
+    "long": "-6.18226",
+    "destination": "Balbriggan"
+  },
+  {
+    "lat": "53.5741",
+    "long": "-6.11933",
+    "destination": "Skerries"
+  },
+  {
+    "lat": "53.523",
+    "long": "-7.34608",
+    "destination": "Mullingar"
+  },
+  {
+    "lat": "53.5201",
+    "long": "-6.1439",
+    "destination": "Rush and Lusk"
+  },
+  {
+    "lat": "53.4855",
+    "long": "-6.15134",
+    "destination": "Donabate"
+  },
+  {
+    "lat": "53.4509",
+    "long": "-6.15649",
+    "destination": "Malahide"
+  },
+  {
+    "lat": "53.4349",
+    "long": "-6.46898",
+    "destination": "M3 Parkway"
+  },
+  {
+    "lat": "53.4273",
+    "long": "-7.93683",
+    "destination": "Athlone"
+  },
+  {
+    "lat": "53.4175",
+    "long": "-6.46483",
+    "destination": "Dunboyne"
+  },
+  {
+    "lat": "53.4169",
+    "long": "-6.1512",
+    "destination": "Portmarnock"
+  },
+  {
+    "lat": "53.4157",
+    "long": "-6.83395",
+    "destination": "Enfield"
+  },
+  {
+    "lat": "53.4043",
+    "long": "-6.67892",
+    "destination": "Kilcock"
+  },
+  {
+    "lat": "53.4032",
+    "long": "-6.14839",
+    "destination": "Clongriffin"
+  },
+  {
+    "lat": "53.392",
+    "long": "-6.11448",
+    "destination": "Sutton"
+  },
+  {
+    "lat": "53.3917",
+    "long": "-6.13678",
+    "destination": "Bayside"
+  },
+  {
+    "lat": "53.3909",
+    "long": "-6.15672",
+    "destination": "Howth Junction"
+  },
+  {
+    "lat": "53.3891",
+    "long": "-6.07401",
+    "destination": "Howth"
+  },
+  {
+    "lat": "53.387",
+    "long": "-6.16163",
+    "destination": "Kilbarrack"
+  },
+  {
+    "lat": "53.3853",
+    "long": "-6.44205",
+    "destination": "Hansfield"
+  },
+  {
+    "lat": "53.3831",
+    "long": "-6.4242",
+    "destination": "Clonsilla"
+  },
+  {
+    "lat": "53.3816",
+    "long": "-6.37149",
+    "destination": "Castleknock"
+  },
+  {
+    "lat": "53.3815",
+    "long": "-6.17699",
+    "destination": "Raheny"
+  },
+  {
+    "lat": "53.3786",
+    "long": "-6.19131",
+    "destination": "Harmonstown"
+  },
+  {
+    "lat": "53.378",
+    "long": "-6.58993",
+    "destination": "Maynooth"
+  },
+  {
+    "lat": "53.3777",
+    "long": "-6.34591",
+    "destination": "Navan Road Parkway"
+  },
+  {
+    "lat": "53.3776",
+    "long": "-6.39072",
+    "destination": "Coolmine"
+  },
+  {
+    "lat": "53.3755",
+    "long": "-6.33135",
+    "destination": "Ashtown"
+  },
+  {
+    "lat": "53.3743",
+    "long": "-6.48624",
+    "destination": "Leixlip (Confey)"
+  },
+  {
+    "lat": "53.373",
+    "long": "-6.20442",
+    "destination": "Killester"
+  },
+  {
+    "lat": "53.3725",
+    "long": "-6.29869",
+    "destination": "Broombridge"
+  },
+  {
+    "lat": "53.3704",
+    "long": "-6.50598",
+    "destination": "Leixlip (Louisa Bridge)"
+  },
+  {
+    "lat": "53.3632",
+    "long": "-6.25908",
+    "destination": "Drumcondra"
+  },
+  {
+    "lat": "53.3629",
+    "long": "-6.22753",
+    "destination": "Clontarf Road"
+  },
+  {
+    "lat": "53.3531",
+    "long": "-6.24591",
+    "destination": "Dublin Connolly"
+  },
+  {
+    "lat": "53.3509",
+    "long": "-6.23929",
+    "destination": "Docklands"
+  },
+  {
+    "lat": "53.347",
+    "long": "-6.25425",
+    "destination": "Tara Street"
+  },
+  {
+    "lat": "53.3464",
+    "long": "-6.29461",
+    "destination": "Dublin Heuston"
+  },
+  {
+    "lat": "53.3433",
+    "long": "-6.24829",
+    "destination": "Dublin Pearse"
+  },
+  {
+    "lat": "53.3432",
+    "long": "-8.47231",
+    "destination": "Woodlawn"
+  },
+  {
+    "lat": "53.3397",
+    "long": "-6.23773",
+    "destination": "Grand Canal Dock"
+  },
+  {
+    "lat": "53.3395",
+    "long": "-7.61596",
+    "destination": "Clara"
+  },
+  {
+    "lat": "53.3363",
+    "long": "-8.24081",
+    "destination": "Ballinasloe"
+  },
+  {
+    "lat": "53.3353",
+    "long": "-7",
+    "destination": "Adamstown"
+  },
+  {
+    "lat": "53.3353",
+    "long": "-6.45233",
+    "destination": "Adamstown"
+  },
+  {
+    "lat": "53.3353",
+    "long": "-6.45233",
+    "destination": "Adamstown"
+  },
+  {
+    "lat": "53.3347",
+    "long": "-6.22979",
+    "destination": "Lansdowne Road"
+  },
+  {
+    "lat": "53.334",
+    "long": "-6.37868",
+    "destination": "Park West and Cherry Orchard"
+  },
+  {
+    "lat": "53.334",
+    "long": "-6.37868",
+    "destination": "Park West and Cherry Orchard"
+  },
+  {
+    "lat": "53.334",
+    "long": "-6.37868",
+    "destination": "PARK WEST"
+  },
+  {
+    "lat": "53.3334",
+    "long": "-6.40628",
+    "destination": "Clondalkin"
+  },
+  {
+    "lat": "53.3334",
+    "long": "-6.40628",
+    "destination": "Clondalkin"
+  },
+  {
+    "lat": "53.3334",
+    "long": "-6.40628",
+    "destination": "Clondalkin"
+  },
+  {
+    "lat": "53.3281",
+    "long": "-6.22116",
+    "destination": "Sandymount"
+  },
+  {
+    "lat": "53.3223",
+    "long": "-6.52356",
+    "destination": "Hazelhatch"
+  },
+  {
+    "lat": "53.3223",
+    "long": "-6.52356",
+    "destination": "Hazelhatch"
+  },
+  {
+    "lat": "53.3223",
+    "long": "-6.52356",
+    "destination": "Hazelhatch"
+  },
+  {
+    "lat": "53.3212",
+    "long": "-8.60608",
+    "destination": "Attymon"
+  },
+  {
+    "lat": "53.3206",
+    "long": "-6.21112",
+    "destination": "Sydney Parade"
+  },
+  {
+    "lat": "53.3099",
+    "long": "-6.19498",
+    "destination": "Booterstown"
+  },
+  {
+    "lat": "53.3027",
+    "long": "-6.17833",
+    "destination": "Blackrock"
+  },
+  {
+    "lat": "53.3015",
+    "long": "-8.74855",
+    "destination": "Athenry"
+  },
+  {
+    "lat": "53.2991",
+    "long": "-6.16512",
+    "destination": "Seapoint"
+  },
+  {
+    "lat": "53.2954",
+    "long": "-6.15206",
+    "destination": "Salthill and Monkstown"
+  },
+  {
+    "lat": "53.2951",
+    "long": "-6.13498",
+    "destination": "Dun Laoghaire"
+  },
+  {
+    "lat": "53.2878",
+    "long": "-6.12712",
+    "destination": "Sandycove"
+  },
+  {
+    "lat": "53.2812",
+    "long": "-6.12289",
+    "destination": "Glenageary"
+  },
+  {
+    "lat": "53.2756",
+    "long": "-6.10333",
+    "destination": "Dalkey"
+  },
+  {
+    "lat": "53.2751",
+    "long": "-8.94792",
+    "destination": "Oranmore"
+  },
+  {
+    "lat": "53.2736",
+    "long": "-9.04696",
+    "destination": "Galway"
+  },
+  {
+    "lat": "53.2704",
+    "long": "-7.49985",
+    "destination": "Tullamore"
+  },
+  {
+    "lat": "53.2557",
+    "long": "-6.11317",
+    "destination": "Killiney"
+  },
+  {
+    "lat": "53.2469",
+    "long": "-6.66386",
+    "destination": "Sallins"
+  },
+  {
+    "lat": "53.2364",
+    "long": "-6.11691",
+    "destination": "Shankill"
+  },
+  {
+    "lat": "53.2252",
+    "long": "-8.7359",
+    "destination": "Craughwell"
+  },
+  {
+    "lat": "53.22",
+    "long": "-6.1101",
+    "destination": "Woodbrook"
+  },
+  {
+    "lat": "53.2043",
+    "long": "-6.10046",
+    "destination": "Bray"
+  },
+  {
+    "lat": "53.1855",
+    "long": "-6.80807",
+    "destination": "Newbridge"
+  },
+  {
+    "lat": "53.1725",
+    "long": "-6.86245",
+    "destination": "Curragh"
+  },
+  {
+    "lat": "53.163",
+    "long": "-6.90802",
+    "destination": "Kildare"
+  },
+  {
+    "lat": "53.1572",
+    "long": "-8.81483",
+    "destination": "Ardrahan"
+  },
+  {
+    "lat": "53.146",
+    "long": "-7.18055",
+    "destination": "Portarlington"
+  },
+  {
+    "lat": "53.1454",
+    "long": "-7.06361",
+    "destination": "Monasterevin"
+  },
+  {
+    "lat": "53.1442",
+    "long": "-6.06085",
+    "destination": "Greystones"
+  },
+  {
+    "lat": "53.107",
+    "long": "-6.04112",
+    "destination": "Kilcoole"
+  },
+  {
+    "lat": "53.0653",
+    "long": "-8.81595",
+    "destination": "Gort"
+  },
+  {
+    "lat": "53.0371",
+    "long": "-7.30086",
+    "destination": "Portlaoise"
+  },
+  {
+    "lat": "52.992",
+    "long": "-6.9762",
+    "destination": "Athy"
+  },
+  {
+    "lat": "52.9882",
+    "long": "-6.05338",
+    "destination": "Wicklow"
+  },
+  {
+    "lat": "52.9607",
+    "long": "-7.7941",
+    "destination": "Roscrea"
+  },
+  {
+    "lat": "52.9363",
+    "long": "-8.0246",
+    "destination": "Cloughjordan"
+  },
+  {
+    "lat": "52.9295",
+    "long": "-6.22641",
+    "destination": "Rathdrum"
+  },
+  {
+    "lat": "52.8999",
+    "long": "-7.60259",
+    "destination": "Ballybrophy"
+  },
+  {
+    "lat": "52.8605",
+    "long": "-8.19471",
+    "destination": "Nenagh"
+  },
+  {
+    "lat": "52.8407",
+    "long": "-6.92217",
+    "destination": "Carlow"
+  },
+  {
+    "lat": "52.8386",
+    "long": "-8.97491",
+    "destination": "Ennis"
+  },
+  {
+    "lat": "52.7932",
+    "long": "-6.15994",
+    "destination": "Arklow"
+  },
+  {
+    "lat": "52.7878",
+    "long": "-7.82293",
+    "destination": "Templemore"
+  },
+  {
+    "lat": "52.7656",
+    "long": "-8.44247",
+    "destination": "Birdhill"
+  },
+  {
+    "lat": "52.7376",
+    "long": "-8.78427",
+    "destination": "Sixmilebridge"
+  },
+  {
+    "lat": "52.7128",
+    "long": "-8.49794",
+    "destination": "Castleconnell"
+  },
+  {
+    "lat": "52.699",
+    "long": "-6.95213",
+    "destination": "Muine Bheag"
+  },
+  {
+    "lat": "52.6766",
+    "long": "-7.82189",
+    "destination": "Thurles"
+  },
+  {
+    "lat": "52.6712",
+    "long": "-6.29195",
+    "destination": "Gorey"
+  },
+  {
+    "lat": "52.6587",
+    "long": "-8.62397",
+    "destination": "Limerick"
+  },
+  {
+    "lat": "52.655",
+    "long": "-7.24498",
+    "destination": "Kilkenny"
+  },
+  {
+    "lat": "52.523",
+    "long": "-7.14891",
+    "destination": "Thomastown"
+  },
+  {
+    "lat": "52.5046",
+    "long": "-6.56627",
+    "destination": "Enniscorthy"
+  },
+  {
+    "lat": "52.5009",
+    "long": "-8.20003",
+    "destination": "Limerick Junction"
+  },
+  {
+    "lat": "52.4701",
+    "long": "-8.1625",
+    "destination": "Tipperary"
+  },
+  {
+    "lat": "52.3777",
+    "long": "-7.92181",
+    "destination": "Cahir"
+  },
+  {
+    "lat": "52.3611",
+    "long": "-7.69936",
+    "destination": "Clonmel"
+  },
+  {
+    "lat": "52.3487",
+    "long": "-7.40354",
+    "destination": "Carrick on Suir"
+  },
+  {
+    "lat": "52.3468",
+    "long": "-8.65362",
+    "destination": "Charleville"
+  },
+  {
+    "lat": "52.3434",
+    "long": "-6.4636",
+    "destination": "Wexford"
+  },
+  {
+    "lat": "52.2855",
+    "long": "-6.93896",
+    "destination": "Campile"
+  },
+  {
+    "lat": "52.2834",
+    "long": "-6.83958",
+    "destination": "Ballycullane"
+  },
+  {
+    "lat": "52.2726",
+    "long": "-6.39254",
+    "destination": "Rosslare Strand"
+  },
+  {
+    "lat": "52.271",
+    "long": "-9.69846",
+    "destination": "Tralee"
+  },
+  {
+    "lat": "52.2678",
+    "long": "-6.75392",
+    "destination": "Wellingtonbridge"
+  },
+  {
+    "lat": "52.2667",
+    "long": "-7.1183",
+    "destination": "Waterford"
+  },
+  {
+    "lat": "52.2531",
+    "long": "-6.33493",
+    "destination": "Rosslare Europort"
+  },
+  {
+    "lat": "52.2312",
+    "long": "-6.54918",
+    "destination": "Bridgetown"
+  },
+  {
+    "lat": "52.1733",
+    "long": "-9.55278",
+    "destination": "Farranfore"
+  },
+  {
+    "lat": "52.1396",
+    "long": "-8.65521",
+    "destination": "Mallow"
+  },
+  {
+    "lat": "52.1287",
+    "long": "-8.89793",
+    "destination": "Banteer"
+  },
+  {
+    "lat": "52.0854",
+    "long": "-9.21756",
+    "destination": "Rathmore"
+  },
+  {
+    "lat": "52.0776",
+    "long": "-9.06973",
+    "destination": "Millstreet"
+  },
+  {
+    "lat": "52.0595",
+    "long": "-9.50198",
+    "destination": "Killarney"
+  },
+  {
+    "lat": "51.9212",
+    "long": "-8.17579",
+    "destination": "Midleton"
+  },
+  {
+    "lat": "51.9163",
+    "long": "-8.26323",
+    "destination": "Carrigtwohill"
+  },
+  {
+    "lat": "51.9112",
+    "long": "-8.3254",
+    "destination": "Glounthaune"
+  },
+  {
+    "lat": "51.9078",
+    "long": "-8.35466",
+    "destination": "LittleIsland"
+  },
+  {
+    "lat": "51.9018",
+    "long": "-8.4582",
+    "destination": "Cork"
+  },
+  {
+    "lat": "51.896",
+    "long": "-8.3183",
+    "destination": "Fota"
+  },
+  {
+    "lat": "51.8688",
+    "long": "-8.32417",
+    "destination": "Carrigaloe"
+  },
+  {
+    "lat": "51.8496",
+    "long": "-8.32252",
+    "destination": "Rushbrooke"
+  },
+  {
+    "lat": "51.8491",
+    "long": "-8.29956",
+    "destination": "Cobh"
+  },
+  {
+    "lat": "0",
+    "long": "0",
+    "destination": "CITY JUNCTION"
+  },
+  {
+    "lat": "0",
+    "long": "0",
+    "destination": "CENTRAL JUNCTION"
+  },
+  {
+    "lat": "0",
+    "long": "0",
+    "destination": "DUNMURRAY"
+  },
+  {
+    "lat": "0",
+    "long": "0",
+    "destination": "MOIRA"
+  }
+]
