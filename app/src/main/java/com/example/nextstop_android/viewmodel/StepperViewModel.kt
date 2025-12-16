@@ -15,13 +15,17 @@ class StepperViewModel : ViewModel() {
     private val _selectedStation = MutableStateFlow<String?>(null)
     val selectedStation: StateFlow<String?> = _selectedStation
 
+    private val _selectedStationLocation = MutableStateFlow<Pair<Double, Double>?>(null)
+    val selectedStationLocation: StateFlow<Pair<Double, Double>?> = _selectedStationLocation
+
     fun selectTransport(transport: String) {
         _selectedTransport.value = transport
         _currentStep.value = 2
     }
 
-    fun selectStation(station: String) {
+    fun selectStation(station: String, latitude: Double, longitude: Double) {
         _selectedStation.value = station
+        _selectedStationLocation.value = Pair(latitude, longitude)
         _currentStep.value = 3
     }
 

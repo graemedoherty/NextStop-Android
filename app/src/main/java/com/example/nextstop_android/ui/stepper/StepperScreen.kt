@@ -17,6 +17,7 @@ import com.example.nextstop_android.viewmodel.StepperViewModel
 @Composable
 fun StepperScreen(
     onAlarmCreated: () -> Unit,
+    onDestinationSelected: (latitude: Double, longitude: Double) -> Unit = { _, _ -> },
     viewModel: StepperViewModel = viewModel()
 ) {
     val currentStep by viewModel.currentStep.collectAsState()
@@ -44,14 +45,22 @@ fun StepperScreen(
 
                     2 -> Step2Screen(
                         selectedTransport = selectedTransport ?: "",
-                        onStationSelected = viewModel::selectStation,
+                        onStationSelected = { stationName, latitude, longitude ->
+                            viewModel.selectStation(stationName, latitude, longitude)
+                        },
                         onBack = viewModel::goBack
                     )
 
                     3 -> Step3Screen(
                         selectedTransport = selectedTransport ?: "",
                         selectedStation = selectedStation ?: "",
-                        onAlarmSet = onAlarmCreated,
+                        onAlarmSet = {
+                            val location = viewModel.selectedStationLocation.value
+                            if (location != null) {
+                                onDestinationSelected(location.first, location.second)
+                            }
+                            onAlarmCreated()
+                        },
                         onBack = viewModel::goBack
                     )
                 }

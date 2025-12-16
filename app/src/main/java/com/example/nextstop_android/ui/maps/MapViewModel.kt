@@ -10,7 +10,8 @@ data class MapUiState(
     val selectedStation: String? = null,
     val isLoading: Boolean = false,
     val error: String? = null,
-    val userLocation: Pair<Double, Double>? = null
+    val userLocation: Pair<Double, Double>? = null,
+    val destinationLocation: Pair<Double, Double>? = null
 )
 
 class MapViewModel : ViewModel() {
@@ -20,46 +21,11 @@ class MapViewModel : ViewModel() {
     // Mock data - replace with real API calls
     private val mockStations = listOf(
         Station(
-            name = "Dublin Connolly",
-            type = "Train",
-            latitude = 53.3626,
-            longitude = -6.2421,
-            distance = 450
-        ),
-        Station(
-            name = "Dublin Heuston",
-            type = "Train",
-            latitude = 53.6452,
-            longitude = -6.2884,
-            distance = 2100
-        ),
-        Station(
-            name = "O'Connell Street",
-            type = "Bus",
-            latitude = 53.3506,
-            longitude = -6.2603,
-            distance = 200
-        ),
-        Station(
-            name = "Smithfield",
-            type = "Luas",
-            latitude = 53.3470,
-            longitude = -6.2788,
-            distance = 890
-        ),
-        Station(
-            name = "College Green",
-            type = "Bus",
-            latitude = 53.3436,
-            longitude = -6.2597,
-            distance = 350
-        ),
-        Station(
-            name = "Tallaght",
-            type = "Luas",
-            latitude = 53.2878,
-            longitude = -6.3770,
-            distance = 8500
+            name = "User Location",
+            type = "Current",
+            latitude = 53.4509,
+            longitude = -6.1501,
+            distance = 0
         )
     )
 
@@ -96,6 +62,12 @@ class MapViewModel : ViewModel() {
     fun setUserLocation(latitude: Double, longitude: Double) {
         _uiState.value = _uiState.value.copy(
             userLocation = Pair(latitude, longitude)
+        )
+    }
+
+    fun setDestinationLocation(latitude: Double, longitude: Double) {
+        _uiState.value = _uiState.value.copy(
+            destinationLocation = Pair(latitude, longitude)
         )
     }
 }
