@@ -11,12 +11,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nextstop_android.ui.components.AdSection
+import com.example.nextstop_android.ui.maps.Station
 import com.example.nextstop_android.viewmodel.StepperViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StepperScreen(
-    onAlarmCreated: () -> Unit,
+    onAlarmCreated: (Station) -> Unit,  // Changed to accept Station parameter
     onDestinationSelected: (latitude: Double, longitude: Double) -> Unit = { _, _ -> },
     viewModel: StepperViewModel = viewModel()
 ) {
@@ -27,7 +28,6 @@ fun StepperScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         StepIndicators(currentStep)
 
-        Divider(modifier = Modifier.padding(vertical = 16.dp))
 
         Box(modifier = Modifier.weight(1f)) {
             AnimatedContent(
@@ -58,8 +58,17 @@ fun StepperScreen(
                             val location = viewModel.selectedStationLocation.value
                             if (location != null) {
                                 onDestinationSelected(location.first, location.second)
+
+                                // Create Station object to pass to Map
+                                val station = Station(
+                                    name = selectedStation ?: "Unknown Station",
+                                    type = selectedTransport ?: "Unknown",
+                                    latitude = location.first,
+                                    longitude = location.second,
+                                    distance = 0 // You can calculate this if needed
+                                )
+                                onAlarmCreated(station)
                             }
-                            onAlarmCreated()
                         },
                         onBack = viewModel::goBack
                     )

@@ -6,6 +6,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
+import androidx.compose.material3.Button
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -27,7 +28,7 @@ fun Step1Screen(
         Spacer(Modifier.height(24.dp))
 
         listOf("Train", "Luas", "Bus").forEach { mode ->
-            OutlinedButton(
+            Button(
                 onClick = { selected = mode },
                 modifier = Modifier
                     .fillMaxWidth()

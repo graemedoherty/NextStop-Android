@@ -102,11 +102,6 @@ fun Step2Screen(
                                         selected = station
                                         expanded = false
                                         keyboardController?.hide()
-                                        onStationSelected(
-                                            station,
-                                            stationData.getLatitude(),
-                                            stationData.getLongitude()
-                                        )
                                     }
                                 }
                             )
