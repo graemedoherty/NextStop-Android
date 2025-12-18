@@ -41,8 +41,8 @@ fun AlarmCard(
     )
 
     val borderColor = when (status) {
-        AlarmStatus.ACTIVE -> Color(0xFF2E7D32).copy(alpha = glowAlpha)
-        AlarmStatus.ARRIVED -> Color(0xFFC62828).copy(alpha = glowAlpha)
+        AlarmStatus.ACTIVE -> Color(0xFF6F66E4).copy(alpha = glowAlpha)
+        AlarmStatus.ARRIVED -> Color(0xFF181515).copy(alpha = glowAlpha)
     }
 
     Surface(

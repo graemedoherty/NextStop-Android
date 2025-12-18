@@ -9,6 +9,7 @@ import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.AlertDialog
@@ -20,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.nextstop_android.R
 import com.example.nextstop_android.service.LocationTrackingService
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
@@ -27,6 +29,7 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
+import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.maps.android.compose.*
 
 @OptIn(ExperimentalPermissionsApi::class)
@@ -39,10 +42,31 @@ fun MapsScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
 
-    // Immediately set map ready to true
-    val isMapReady by remember { mutableStateOf(true) }
+    /* ---------------------------------------------------
+     * MAP STYLE (LIGHT / DARK)
+     * --------------------------------------------------- */
+    val isDarkTheme = isSystemInDarkTheme()
 
-    // Request location and notification permissions
+    val mapProperties = remember(isDarkTheme) {
+        MapProperties(
+            mapStyleOptions = try {
+                MapStyleOptions.loadRawResourceStyle(
+                    context,
+                    if (isDarkTheme) {
+                        R.raw.map_dark_style
+                    } else {
+                        R.raw.map_light_style
+                    }
+                )
+            } catch (e: Exception) {
+                null
+            }
+        )
+    }
+
+    /* ---------------------------------------------------
+     * PERMISSIONS
+     * --------------------------------------------------- */
     val permissionsList = buildList {
         add(Manifest.permission.ACCESS_FINE_LOCATION)
         add(Manifest.permission.ACCESS_COARSE_LOCATION)
@@ -51,38 +75,34 @@ fun MapsScreen(
         }
     }
 
-    val locationPermissions = rememberMultiplePermissionsState(
-        permissions = permissionsList
-    )
-
+    val locationPermissions = rememberMultiplePermissionsState(permissionsList)
     var showPermissionRationale by remember { mutableStateOf(false) }
 
-    // Get initial location
+    /* ---------------------------------------------------
+     * INITIAL LOCATION
+     * --------------------------------------------------- */
     LaunchedEffect(locationPermissions.allPermissionsGranted) {
         if (locationPermissions.allPermissionsGranted) {
             try {
-                val locationClient = LocationServices.getFusedLocationProviderClient(context)
-                locationClient.lastLocation.addOnSuccessListener { location ->
+                val client = LocationServices.getFusedLocationProviderClient(context)
+                client.lastLocation.addOnSuccessListener { location ->
                     location?.let {
-                        // Just update location, distance will come from service
                         viewModel.updateTracking(it.latitude, it.longitude, 0)
-                        android.util.Log.d("MapsScreen", "Initial location: ${it.latitude}, ${it.longitude}")
                     }
                 }
-            } catch (e: SecurityException) {
-                android.util.Log.e("MapsScreen", "Failed to get initial location: ${e.message}")
-            }
+            } catch (_: SecurityException) { }
         }
     }
 
-    // Set the destination and start tracking
+    /* ---------------------------------------------------
+     * START TRACKING
+     * --------------------------------------------------- */
     LaunchedEffect(destinationStation, locationPermissions.allPermissionsGranted) {
         destinationStation?.let {
             viewModel.startAlarm(it)
 
             if (locationPermissions.allPermissionsGranted) {
-                // Start location tracking service
-                val serviceIntent = Intent(context, LocationTrackingService::class.java).apply {
+                val intent = Intent(context, LocationTrackingService::class.java).apply {
                     action = LocationTrackingService.ACTION_START
                     putExtra(LocationTrackingService.EXTRA_DESTINATION_LAT, it.latitude)
                     putExtra(LocationTrackingService.EXTRA_DESTINATION_LNG, it.longitude)
@@ -90,12 +110,11 @@ fun MapsScreen(
                 }
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(serviceIntent)
+                    context.startForegroundService(intent)
                 } else {
-                    context.startService(serviceIntent)
+                    context.startService(intent)
                 }
             } else {
-                // Request permissions
                 if (locationPermissions.shouldShowRationale) {
                     showPermissionRationale = true
                 } else {
@@ -105,69 +124,48 @@ fun MapsScreen(
         }
     }
 
-    // Register broadcast receiver for location updates
+    /* ---------------------------------------------------
+     * LOCATION UPDATES
+     * --------------------------------------------------- */
     DisposableEffect(Unit) {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
-                android.util.Log.d("MapsScreen", "onReceive called, intent action: ${intent?.action}")
+                val distance =
+                    intent?.getIntExtra(LocationTrackingService.EXTRA_DISTANCE, -1) ?: -1
+                val lat =
+                    intent?.getDoubleExtra(LocationTrackingService.EXTRA_USER_LAT, 0.0) ?: 0.0
+                val lng =
+                    intent?.getDoubleExtra(LocationTrackingService.EXTRA_USER_LNG, 0.0) ?: 0.0
 
-                val distance = intent?.getIntExtra(LocationTrackingService.EXTRA_DISTANCE, -1) ?: -1
-                val userLat = intent?.getDoubleExtra(LocationTrackingService.EXTRA_USER_LAT, 0.0) ?: 0.0
-                val userLng = intent?.getDoubleExtra(LocationTrackingService.EXTRA_USER_LNG, 0.0) ?: 0.0
-
-                android.util.Log.d("MapsScreen", "Broadcast received: distance=$distance, lat=$userLat, lng=$userLng")
-
-                if (distance >= 0 && userLat != 0.0 && userLng != 0.0) {
-                    viewModel.updateTracking(userLat, userLng, distance)
-                    android.util.Log.d("MapsScreen", "ViewModel.updateTracking called with distance=$distance")
+                if (distance >= 0 && lat != 0.0 && lng != 0.0) {
+                    viewModel.updateTracking(lat, lng, distance)
                 }
             }
         }
 
-        val filter = IntentFilter(LocationTrackingService.ACTION_DISTANCE_UPDATE)
-
         ContextCompat.registerReceiver(
             context,
             receiver,
-            filter,
+            IntentFilter(LocationTrackingService.ACTION_DISTANCE_UPDATE),
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
 
-
-        onDispose {
-            try {
-                context.unregisterReceiver(receiver)
-            } catch (e: IllegalArgumentException) {
-                // Receiver was already unregistered
-            }
-        }
+        onDispose { context.unregisterReceiver(receiver) }
     }
 
-    // NOTE: We do NOT stop the service when leaving the screen
-    // The service continues running in the background until:
-    // 1. User cancels the alarm manually
-    // 2. User arrives at destination
-    // This allows the app to track location even when closed
-
-    // Only create LatLng if we have actual user location
-    val userLocation = uiState.userLocation?.let {
-        LatLng(it.first, it.second)
-    }
-
-    val destinationLatLng = uiState.destinationLocation?.let {
-        LatLng(it.first, it.second)
-    }
+    /* ---------------------------------------------------
+     * MAP STATE
+     * --------------------------------------------------- */
+    val userLocation = uiState.userLocation?.let { LatLng(it.first, it.second) }
+    val destinationLatLng = uiState.destinationLocation?.let { LatLng(it.first, it.second) }
 
     val cameraPositionState = rememberCameraPositionState {
-        // Start centered on destination immediately for faster initial render
-        position = if (destinationLatLng != null) {
-            CameraPosition.fromLatLngZoom(destinationLatLng, 13f)
-        } else {
-            CameraPosition.fromLatLngZoom(LatLng(53.4509, -6.1501), 12f)
-        }
+        position = CameraPosition.fromLatLngZoom(
+            destinationLatLng ?: LatLng(53.4509, -6.1501),
+            11f
+        )
     }
 
-    // Only zoom to fit both markers once when we have both locations
     var hasZoomedToFit by remember { mutableStateOf(false) }
 
     LaunchedEffect(userLocation, destinationLatLng) {
@@ -178,103 +176,88 @@ fun MapsScreen(
                 .build()
 
             cameraPositionState.animate(
-                update = com.google.android.gms.maps.CameraUpdateFactory
+                com.google.android.gms.maps.CameraUpdateFactory
                     .newLatLngBounds(bounds, 150),
-                durationMs = 800
+                800
             )
             hasZoomedToFit = true
         }
     }
 
-    // Show loading screen or map
-    if (!isMapReady) {
-        LoadingScreen(
-            message = "Preparing your journey to ${destinationStation?.name ?: "destination"}..."
-        )
-    } else {
-        Box(modifier = Modifier.fillMaxSize()) {
-            GoogleMap(
-                modifier = Modifier.fillMaxSize(),
-                cameraPositionState = cameraPositionState
-            ) {
-                // Only show user marker if we have actual location
-                userLocation?.let {
-                    Marker(
-                        state = rememberMarkerState(position = it),
-                        title = "Your Location"
-                    )
-                }
-
-                if (destinationLatLng != null) {
-                    Marker(
-                        state = rememberMarkerState(position = destinationLatLng),
-                        title = "Destination"
-                    )
-                }
+    /* ---------------------------------------------------
+     * UI
+     * --------------------------------------------------- */
+    Box(Modifier.fillMaxSize()) {
+        GoogleMap(
+            modifier = Modifier.fillMaxSize(),
+            cameraPositionState = cameraPositionState,
+            properties = mapProperties
+        ) {
+            userLocation?.let {
+                Marker(
+                    state = rememberMarkerState(position = it),
+                    title = "Your Location"
+                )
             }
 
-            // Alarm Card at the bottom - only show when ACTIVE with valid distance
-            AnimatedVisibility(
-                visible = uiState.alarmActive && uiState.distanceToDestination >= 0,
-                enter = slideInVertically(
-                    initialOffsetY = { fullHeight -> fullHeight }
-                ),
-                exit = slideOutVertically(
-                    targetOffsetY = { fullHeight -> fullHeight }
-                ),
-                modifier = Modifier.align(Alignment.BottomCenter)
-            ) {
-                AlarmCard(
-                    destination = uiState.selectedStation?.name ?: "Unknown",
-                    distanceMeters = uiState.distanceToDestination,
-                    status = AlarmStatus.ACTIVE,
-                    onCancel = {
-                        // Stop the service
-                        val stopIntent = Intent(context, LocationTrackingService::class.java).apply {
-                            action = LocationTrackingService.ACTION_STOP
-                        }
-                        context.startService(stopIntent)
-
-                        viewModel.cancelAlarm()
-                        onBack()
-                    }
+            destinationLatLng?.let {
+                Marker(
+                    state = rememberMarkerState(position = it),
+                    title = "Destination"
                 )
             }
         }
+
+        AnimatedVisibility(
+            visible = uiState.alarmActive && uiState.distanceToDestination >= 0,
+            enter = slideInVertically { it },
+            exit = slideOutVertically { it },
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            AlarmCard(
+                destination = uiState.selectedStation?.name ?: "Unknown",
+                distanceMeters = uiState.distanceToDestination,
+                status = AlarmStatus.ACTIVE,
+                onCancel = {
+                    context.startService(
+                        Intent(context, LocationTrackingService::class.java).apply {
+                            action = LocationTrackingService.ACTION_STOP
+                        }
+                    )
+                    viewModel.cancelAlarm()
+                    onBack()
+                }
+            )
+        }
     }
 
-    // Permission rationale dialog
+    /* ---------------------------------------------------
+     * PERMISSION DIALOG
+     * --------------------------------------------------- */
     if (showPermissionRationale) {
         AlertDialog(
             onDismissRequest = { showPermissionRationale = false },
             title = { Text("Location Permission Required") },
-            text = {
-                Text("This app needs location access to track your journey and alert you when you're approaching your destination. Please grant location permission to continue.")
-            },
+            text = { Text("This app needs location access to track your journey.") },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        showPermissionRationale = false
-                        locationPermissions.launchMultiplePermissionRequest()
-                    }
-                ) {
-                    Text("Grant Permission")
-                }
+                TextButton(onClick = {
+                    showPermissionRationale = false
+                    locationPermissions.launchMultiplePermissionRequest()
+                }) { Text("Grant Permission") }
             },
             dismissButton = {
-                TextButton(
-                    onClick = {
-                        showPermissionRationale = false
-                        onBack()
-                    }
-                ) {
-                    Text("Cancel")
-                }
+                TextButton(onClick = {
+                    showPermissionRationale = false
+                    onBack()
+                }) { Text("Cancel") }
             }
         )
     }
 }
 
+/* ---------------------------------------------------
+ * MODEL
+ * --------------------------------------------------- */
 data class Station(
     val name: String,
     val type: String,
