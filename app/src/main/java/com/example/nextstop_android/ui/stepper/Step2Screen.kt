@@ -22,11 +22,10 @@ fun Step2Screen(
     onStationSelected: (stationName: String, latitude: Double, longitude: Double) -> Unit,
     onBack: () -> Unit
 ) {
-    val keyboardController = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val dataLoader = remember { StationDataLoader(context) }
 
-    // Load stations based on selected transport
     val stationDataList = remember(selectedTransport) {
         when (selectedTransport) {
             "Train" -> dataLoader.loadTrainStations()
@@ -36,19 +35,17 @@ fun Step2Screen(
         }
     }
 
-    val stations = stationDataList.map { it.getName() }
+    val stationNames = stationDataList.map { it.getName() }
 
-    var expanded by remember { mutableStateOf(false) }
-    var selected by remember { mutableStateOf<String?>(null) }
     var searchText by remember { mutableStateOf("") }
+    var selectedStation by remember { mutableStateOf<String?>(null) }
 
-    // Filter stations based on search text (minimum 3 characters)
     val filteredStations = remember(searchText, selectedTransport) {
         if (searchText.length < 3) {
             emptyList()
         } else {
-            stations.filter { station ->
-                station.contains(searchText, ignoreCase = true)
+            stationNames.filter {
+                it.contains(searchText, ignoreCase = true)
             }
         }
     }
@@ -57,8 +54,7 @@ fun Step2Screen(
         modifier = Modifier
             .fillMaxSize()
             .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = "Step 2: Select destination station",
@@ -67,81 +63,91 @@ fun Step2Screen(
             modifier = Modifier.padding(bottom = 24.dp)
         )
 
-        Box(modifier = Modifier.fillMaxWidth()) {
-            ExposedDropdownMenuBox(
-                expanded = expanded && filteredStations.isNotEmpty(),
-                onExpandedChange = { expanded = !expanded }
-            ) {
-                OutlinedTextField(
-                    value = searchText,
-                    onValueChange = { newValue ->
-                        searchText = newValue
-                        expanded = true
-                    },
-                    readOnly = false,
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth(),
-                    label = { Text("Station (min 3 letters)") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded && filteredStations.isNotEmpty()) },
-                    shape = RoundedCornerShape(12.dp)
-                )
-
-                if (filteredStations.isNotEmpty()) {
-                    ExposedDropdownMenu(
-                        expanded = expanded && filteredStations.isNotEmpty(),
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        filteredStations.forEach { station ->
-                            DropdownMenuItem(
-                                text = { Text(station) },
-                                onClick = {
-                                    val stationData = stationDataList.find { it.getName() == station }
-                                    if (stationData != null) {
-                                        searchText = station
-                                        selected = station
-                                        expanded = false
-                                        keyboardController?.hide()
-                                    }
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        OutlinedTextField(
+            value = searchText,
+            onValueChange = { searchText = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Station (min 3 letters)") },
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true
+        )
 
         if (searchText.isNotEmpty() && searchText.length < 3) {
             Text(
-                text = "Type at least 3 characters to see suggestions",
+                text = "Type at least 3 characters to see results",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.outline,
                 modifier = Modifier.padding(top = 8.dp)
             )
         }
 
+        if (filteredStations.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                filteredStations.take(6).forEach { station ->
+                    Surface(
+                        onClick = {
+                            val stationData =
+                                stationDataList.find { it.getName() == station }
+
+                            stationData?.let {
+                                selectedStation = station
+                                searchText = station
+                                keyboardController?.hide()
+                            }
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        tonalElevation = 2.dp,
+                        border = BorderStroke(
+                            1.dp,
+                            if (selectedStation == station)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.outline
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = station,
+                            modifier = Modifier.padding(16.dp),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(32.dp))
 
         Button(
             onClick = {
-                selected?.let { stationName ->
-                    val stationData = stationDataList.find { it.getName() == stationName }
-                    if (stationData != null) {
+                selectedStation?.let { name ->
+                    val stationData =
+                        stationDataList.find { it.getName() == name }
+
+                    stationData?.let {
                         onStationSelected(
-                            stationName,
-                            stationData.getLatitude(),
-                            stationData.getLongitude()
+                            name,
+                            it.getLatitude(),
+                            it.getLongitude()
                         )
                     }
                 }
             },
-            enabled = selected != null,
+            enabled = selectedStation != null,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp),
+                .height(52.dp),
             shape = RoundedCornerShape(12.dp)
         ) {
-            Text("Next", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            Text(
+                text = "Next",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium
+            )
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -150,11 +156,16 @@ fun Step2Screen(
             onClick = onBack,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp),
+                .height(52.dp),
             shape = RoundedCornerShape(12.dp),
             border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
         ) {
-            Text("Back", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary)
+            Text(
+                text = "Back",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }

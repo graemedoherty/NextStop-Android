@@ -4,7 +4,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.nextstop_android.ui.components.PrimaryButton
+import com.example.nextstop_android.ui.components.SecondaryButton
 
 @Composable
 fun Step3Screen(
@@ -18,24 +22,50 @@ fun Step3Screen(
             .fillMaxSize()
             .padding(24.dp)
     ) {
-        Text("Step 3: Set alarm")
+        Text(
+            text = "Step 3: Confirm alarm",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium
+        )
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        Button(
-            onClick = onAlarmSet,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Create Alarm")
-        }
+        Text(
+            text = "Transport",
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.outline
+        )
+        Text(
+            text = selectedTransport,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium
+        )
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        OutlinedButton(
-            onClick = onBack,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Back")
-        }
+        Text(
+            text = "Destination",
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.outline
+        )
+        Text(
+            text = selectedStation,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        PrimaryButton(
+            text = "Create Alarm",
+            onClick = onAlarmSet
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        SecondaryButton(
+            text = "Back",
+            onClick = onBack
+        )
     }
 }

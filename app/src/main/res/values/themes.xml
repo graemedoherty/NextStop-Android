@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.NextStopAndroid" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.NextStopAndroid" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- Status bar -->
+        <item name="android:statusBarColor">@color/primary</item>
+        <item name="android:windowLightStatusBar">false</item>
+
+        <!-- Background -->
+        <item name="android:colorBackground">@color/background</item>
+    </style>
+
 </resources>

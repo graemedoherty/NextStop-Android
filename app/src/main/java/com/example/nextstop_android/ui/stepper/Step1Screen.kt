@@ -6,11 +6,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
-import androidx.compose.material3.Button
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.nextstop_android.ui.components.PrimaryButton
+import com.example.nextstop_android.ui.components.SecondaryButton
 
 @Composable
 fun Step1Screen(
@@ -21,47 +24,64 @@ fun Step1Screen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp)
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Top
     ) {
-        Text("Step 1: Select mode of transport")
+        Text(
+            text = "Step 1: Select mode of transport",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium
+        )
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         listOf("Train", "Luas", "Bus").forEach { mode ->
-            Button(
+            OutlinedButton(
                 onClick = { selected = mode },
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(52.dp)
                     .padding(vertical = 6.dp),
+                shape = RoundedCornerShape(12.dp),
                 border = BorderStroke(
-                    2.dp,
-                    if (selected == mode)
+                    width = 2.dp,
+                    color = if (selected == mode)
                         MaterialTheme.colorScheme.primary
                     else
                         MaterialTheme.colorScheme.outline
                 ),
-                shape = RoundedCornerShape(12.dp)
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             ) {
                 Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(mode)
+                    Text(
+                        text = mode,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+
                     if (selected == mode) {
-                        Icon(Icons.Default.Check, null)
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             }
         }
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
-        Button(
-            onClick = { selected?.let(onTransportSelected) },
+        PrimaryButton(
+            text = "Next",
             enabled = selected != null,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Next")
-        }
+            onClick = { selected?.let(onTransportSelected) }
+        )
     }
 }
