@@ -54,14 +54,13 @@ fun Step1Screen(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
             ) {
-                Row(
+                Box(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = mode,
-                        fontSize = 16.sp,
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Medium
                     )
 
@@ -69,7 +68,8 @@ fun Step1Screen(
                         Icon(
                             imageVector = Icons.Default.Check,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.align(Alignment.CenterEnd)
                         )
                     }
                 }

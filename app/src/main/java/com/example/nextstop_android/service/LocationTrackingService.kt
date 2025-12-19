@@ -1,14 +1,17 @@
 package com.example.nextstop_android.service
 
+import android.Manifest
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Build
 import android.os.IBinder
 import android.os.Looper
-import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import com.example.nextstop_android.MainActivity
 import com.google.android.gms.location.*
 import kotlin.math.*
 
@@ -16,31 +19,36 @@ class LocationTrackingService : Service() {
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
-    private var destinationLat: Double = 0.0
-    private var destinationLng: Double = 0.0
-    private var destinationName: String = ""
+
+    private var destinationLat = 0.0
+    private var destinationLng = 0.0
+    private var destinationName = ""
 
     companion object {
-        private const val TAG = "LocationTrackingService"
+        const val EXTRA_OPEN_ALARM = "open_alarm"
+
         const val CHANNEL_ID = "location_tracking_channel"
         const val NOTIFICATION_ID = 1
+
         const val ACTION_START = "START_TRACKING"
         const val ACTION_STOP = "STOP_TRACKING"
+
         const val EXTRA_DESTINATION_LAT = "destination_lat"
         const val EXTRA_DESTINATION_LNG = "destination_lng"
         const val EXTRA_DESTINATION_NAME = "destination_name"
-        const val ARRIVAL_THRESHOLD_METERS = 100 // Trigger alarm within 100m
 
-        // Broadcast action for distance updates
-        const val ACTION_DISTANCE_UPDATE = "com.example.nextstop_android.DISTANCE_UPDATE"
+        const val ACTION_DISTANCE_UPDATE =
+            "com.example.nextstop_android.DISTANCE_UPDATE"
+
         const val EXTRA_DISTANCE = "distance"
         const val EXTRA_USER_LAT = "user_lat"
         const val EXTRA_USER_LNG = "user_lng"
+
+        const val ARRIVAL_THRESHOLD_METERS = 100
     }
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "Service created")
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         createNotificationChannel()
     }
@@ -50,172 +58,190 @@ class LocationTrackingService : Service() {
             ACTION_START -> {
                 destinationLat = intent.getDoubleExtra(EXTRA_DESTINATION_LAT, 0.0)
                 destinationLng = intent.getDoubleExtra(EXTRA_DESTINATION_LNG, 0.0)
-                destinationName = intent.getStringExtra(EXTRA_DESTINATION_NAME) ?: "Destination"
-                Log.d(TAG, "Starting tracking to: $destinationName at ($destinationLat, $destinationLng)")
+                destinationName =
+                    intent.getStringExtra(EXTRA_DESTINATION_NAME) ?: "Destination"
+
                 startTracking()
             }
+
             ACTION_STOP -> {
-                Log.d(TAG, "Stopping tracking")
                 stopTracking()
+                stopForeground(true)
                 stopSelf()
             }
         }
-        return START_STICKY
+
+        // 🔑 Prevent zombie restarts with missing destination data
+        return START_NOT_STICKY
     }
 
     private fun startTracking() {
-        Log.d(TAG, "startTracking called")
-        val notification = createNotification("Tracking to $destinationName", "Calculating distance...")
-        Log.d(TAG, "Notification created, calling startForeground")
+        // 🔐 Permission check (required for foreground location)
+        val hasPermission =
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
 
-        try {
-            startForeground(NOTIFICATION_ID, notification)
-            Log.d(TAG, "Foreground service started successfully")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to start foreground service: ${e.message}", e)
+        if (!hasPermission) {
+            stopSelf()
+            return
         }
 
-        val locationRequest = LocationRequest.Builder(
+        startForeground(
+            NOTIFICATION_ID,
+            buildNotification(
+                title = "Tracking journey",
+                content = "Calculating distance…"
+            )
+        )
+
+        val request = LocationRequest.Builder(
             Priority.PRIORITY_HIGH_ACCURACY,
-            5000L // Update every 5 seconds
-        ).apply {
-            setMinUpdateIntervalMillis(2000L) // Fastest update every 2 seconds
-            setWaitForAccurateLocation(false)
-        }.build()
+            5_000L
+        )
+            .setMinUpdateIntervalMillis(2_000L)
+            .build()
 
         locationCallback = object : LocationCallback() {
-            override fun onLocationResult(locationResult: LocationResult) {
-                locationResult.lastLocation?.let { location ->
-                    Log.d(TAG, "Location update received: ${location.latitude}, ${location.longitude}")
-                    handleLocationUpdate(location)
-                }
+            override fun onLocationResult(result: LocationResult) {
+                result.lastLocation?.let { handleLocation(it) }
             }
         }
 
-        try {
-            fusedLocationClient.requestLocationUpdates(
-                locationRequest,
-                locationCallback,
-                Looper.getMainLooper()
-            )
-            Log.d(TAG, "Location updates requested")
-        } catch (e: SecurityException) {
-            Log.e(TAG, "Security exception: ${e.message}")
-            stopSelf()
-        }
+        fusedLocationClient.requestLocationUpdates(
+            request,
+            locationCallback,
+            Looper.getMainLooper()
+        )
     }
 
-    private fun handleLocationUpdate(location: Location) {
+    private fun handleLocation(location: Location) {
         val distance = calculateDistance(
-            location.latitude, location.longitude,
-            destinationLat, destinationLng
+            location.latitude,
+            location.longitude,
+            destinationLat,
+            destinationLng
         )
 
-        Log.d(TAG, "Distance calculated: ${distance}m")
-        Log.d(TAG, "User at: (${location.latitude}, ${location.longitude})")
-        Log.d(TAG, "Destination at: ($destinationLat, $destinationLng)")
+        val arrived = distance <= ARRIVAL_THRESHOLD_METERS
 
-        // Update notification
-        val notification = createNotification(
-            "Tracking to $destinationName",
-            "${distance}m away"
+        val content =
+            if (arrived) "Arrived at $destinationName"
+            else "$distance m away"
+
+        val manager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        manager.notify(
+            NOTIFICATION_ID,
+            buildNotification(
+                title = "Next Stop",
+                content = content,
+                arrived = arrived
+            )
         )
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(NOTIFICATION_ID, notification)
 
-        // Broadcast distance update to the app (make it explicit)
-        val broadcastIntent = Intent(ACTION_DISTANCE_UPDATE).apply {
-            setPackage(packageName) // Make it explicit
-            putExtra(EXTRA_DISTANCE, distance)
-            putExtra(EXTRA_USER_LAT, location.latitude)
-            putExtra(EXTRA_USER_LNG, location.longitude)
-        }
-        sendBroadcast(broadcastIntent)
-        Log.d(TAG, "Broadcast sent: distance=$distance to package: $packageName")
+        // 🔄 Broadcast update to app
+        sendBroadcast(
+            Intent(ACTION_DISTANCE_UPDATE).apply {
+                setPackage(packageName)
+                putExtra(EXTRA_DISTANCE, distance)
+                putExtra(EXTRA_USER_LAT, location.latitude)
+                putExtra(EXTRA_USER_LNG, location.longitude)
+            }
+        )
 
-        // Check if arrived
-        if (distance <= ARRIVAL_THRESHOLD_METERS) {
-            Log.d(TAG, "Arrival threshold reached!")
-            handleArrival()
+        // 🛑 Stop tracking once arrived (alarm remains visible)
+        if (arrived) {
+            stopTracking()
+            stopForeground(false)
         }
     }
 
-    private fun handleArrival() {
-        // Update notification for arrival
-        val notification = createNotification(
-            "You've Arrived!",
-            "You have reached $destinationName",
-            isArrived = true
-        )
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(NOTIFICATION_ID, notification)
-
-        // Send arrival broadcast (make it explicit)
-        val arrivalIntent = Intent(ACTION_DISTANCE_UPDATE).apply {
-            setPackage(packageName) // Make it explicit
-            putExtra(EXTRA_DISTANCE, 0)
+    private fun stopTracking() {
+        if (::locationCallback.isInitialized) {
+            fusedLocationClient.removeLocationUpdates(locationCallback)
         }
-        sendBroadcast(arrivalIntent)
+    }
 
-        Log.d(TAG, "Arrival notification sent")
+    private fun buildNotification(
+        title: String,
+        content: String,
+        arrived: Boolean = false
+    ): Notification {
+
+        // 🔑 Deep-link back into active alarm screen
+        val openAppIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(EXTRA_OPEN_ALARM, true)
+            putExtra(EXTRA_DESTINATION_NAME, destinationName)
+            putExtra(EXTRA_DESTINATION_LAT, destinationLat)
+            putExtra(EXTRA_DESTINATION_LNG, destinationLng)
+        }
+
+        val contentIntent = PendingIntent.getActivity(
+            this,
+            0,
+            openAppIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val cancelIntent = Intent(this, AlarmActionReceiver::class.java).apply {
+            action = ACTION_STOP
+        }
+
+        val cancelPendingIntent = PendingIntent.getBroadcast(
+            this,
+            1,
+            cancelIntent,
+            PendingIntent.FLAG_IMMUTABLE
+        )
+
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+            .setContentTitle(title)
+            .setContentText(content)
+            .setContentIntent(contentIntent)
+            .setOngoing(!arrived)
+            .setOnlyAlertOnce(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                "Cancel",
+                cancelPendingIntent
+            )
+            .build()
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "NextStop Tracking",
+                NotificationManager.IMPORTANCE_LOW
+            )
+
+            getSystemService(NotificationManager::class.java)
+                .createNotificationChannel(channel)
+        }
     }
 
     private fun calculateDistance(
         lat1: Double, lon1: Double,
         lat2: Double, lon2: Double
     ): Int {
-        val earthRadius = 6371000.0 // meters
-
+        val r = 6_371_000.0
         val dLat = Math.toRadians(lat2 - lat1)
         val dLon = Math.toRadians(lon2 - lon1)
 
-        val a = sin(dLat / 2) * sin(dLat / 2) +
-                cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
-                sin(dLon / 2) * sin(dLon / 2)
+        val a =
+            sin(dLat / 2).pow(2.0) +
+                    cos(Math.toRadians(lat1)) *
+                    cos(Math.toRadians(lat2)) *
+                    sin(dLon / 2).pow(2.0)
 
-        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
-
-        return (earthRadius * c).roundToInt()
-    }
-
-    private fun stopTracking() {
-        if (::locationCallback.isInitialized) {
-            fusedLocationClient.removeLocationUpdates(locationCallback)
-            Log.d(TAG, "Location updates stopped")
-        }
-    }
-
-    private fun createNotification(title: String, content: String, isArrived: Boolean = false): Notification {
-        val intent = Intent(this, Class.forName("com.example.nextstop_android.MainActivity"))
-        val pendingIntent = PendingIntent.getActivity(
-            this, 0, intent,
-            PendingIntent.FLAG_IMMUTABLE
-        )
-
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(title)
-            .setContentText(content)
-            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-            .setContentIntent(pendingIntent)
-            .setOngoing(!isArrived)
-            .setPriority(if (isArrived) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_DEFAULT)
-            .build()
-    }
-
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Log.d(TAG, "Creating notification channel")
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Location Tracking",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Tracks your location to notify you when approaching your destination"
-            }
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
-            Log.d(TAG, "Notification channel created")
-        }
+        return (2 * r * atan2(sqrt(a), sqrt(1 - a))).roundToInt()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
