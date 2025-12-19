@@ -24,6 +24,11 @@
             android:foregroundServiceType="location"
             android:exported="false" />
 
+        <receiver
+            android:name=".service.AlarmActionReceiver"
+            android:exported="false" />
+
+
         <!-- Google Maps API Key - MUST BE INSIDE <application> -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"

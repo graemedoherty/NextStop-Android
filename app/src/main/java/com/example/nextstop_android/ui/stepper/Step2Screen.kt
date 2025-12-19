@@ -81,7 +81,46 @@ fun Step2Screen(
             )
         }
 
-        if (filteredStations.isNotEmpty()) {
+        // Show selected station chip if one is selected
+        if (selectedStation != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Selected Station:",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = selectedStation ?: "",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                    TextButton(
+                        onClick = {
+                            selectedStation = null
+                            searchText = ""
+                        }
+                    ) {
+                        Text("Change")
+                    }
+                }
+            }
+        }
+
+        if (filteredStations.isNotEmpty() && selectedStation == null) {
             Spacer(modifier = Modifier.height(16.dp))
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -93,7 +132,7 @@ fun Step2Screen(
 
                             stationData?.let {
                                 selectedStation = station
-                                searchText = station
+                                searchText = ""  // Clear the search field
                                 keyboardController?.hide()
                             }
                         },
@@ -101,10 +140,7 @@ fun Step2Screen(
                         tonalElevation = 2.dp,
                         border = BorderStroke(
                             1.dp,
-                            if (selectedStation == station)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.outline
+                            MaterialTheme.colorScheme.outline
                         ),
                         modifier = Modifier.fillMaxWidth()
                     ) {

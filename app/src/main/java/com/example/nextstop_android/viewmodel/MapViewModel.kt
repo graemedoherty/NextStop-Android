@@ -10,16 +10,6 @@ class MapViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(MapUiState())
     val uiState: StateFlow<MapUiState> = _uiState
 
-    fun loadNearbyStations() {
-        // Mock only – no blocking
-        _uiState.update {
-            it.copy(
-                stations = emptyList(),
-                isLoading = false
-            )
-        }
-    }
-
     fun startAlarm(station: Station) {
         _uiState.update {
             it.copy(
@@ -39,27 +29,30 @@ class MapViewModel : ViewModel() {
                 alarmArrived = false,
                 selectedStation = null,
                 destinationLocation = null,
-                distanceToDestination = 0
+                distanceToDestination = 0,
+                userLocation = null
             )
         }
     }
 
     /**
-     * 🔑 Single state update to avoid recomposition storms
+     * 🔑 Alarm lifecycle rule:
+     * - arrival does NOT cancel alarm
+     * - only user action cancels
      */
     fun updateTracking(
         latitude: Double,
         longitude: Double,
         distanceMeters: Int
     ) {
-        val arrived = distanceMeters <= 100
+        val arrived = distanceMeters in 0..100
 
         _uiState.update {
             it.copy(
                 userLocation = latitude to longitude,
                 distanceToDestination = distanceMeters,
                 alarmArrived = arrived,
-                alarmActive = !arrived
+                alarmActive = true // 🚨 NEVER auto-disable
             )
         }
     }

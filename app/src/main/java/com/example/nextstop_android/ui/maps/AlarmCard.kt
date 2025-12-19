@@ -8,6 +8,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -28,6 +31,8 @@ fun AlarmCard(
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showCancelDialog by remember { mutableStateOf(false) }
+
     // Animated glow effect
     val infiniteTransition = rememberInfiniteTransition(label = "glow")
     val glowAlpha by infiniteTransition.animateFloat(
@@ -74,7 +79,7 @@ fun AlarmCard(
             ) {
                 StatusBadge(status)
 
-                TextButton(onClick = onCancel) {
+                TextButton(onClick = { showCancelDialog = true }) {
                     Text("Cancel")
                 }
             }
@@ -101,11 +106,39 @@ fun AlarmCard(
             }
         }
     }
+
+    // Cancel Confirmation Dialog
+    if (showCancelDialog) {
+        AlertDialog(
+            onDismissRequest = { showCancelDialog = false },
+            title = { Text("Cancel Alarm?") },
+            text = {
+                Text("Are you sure you want to cancel your alarm for $destination? You'll need to set a new alarm to continue tracking.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showCancelDialog = false
+                        onCancel()
+                    }
+                ) {
+                    Text("Yes, Cancel", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCancelDialog = false }) {
+                    Text("Keep Alarm")
+                }
+            }
+        )
+    }
 }
 
 @Composable
 private fun DistanceDisplay(distanceMeters: Int) {
     val displayText = when {
+        distanceMeters < 0 -> "Calculating distance..."
+        distanceMeters == 0 -> "0 m away"
         distanceMeters >= 1000 -> {
             val km = distanceMeters / 1000.0
             "%.1f km away".format(km)
@@ -118,14 +151,17 @@ private fun DistanceDisplay(distanceMeters: Int) {
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
-            text = "Distance:",
+            text = if (distanceMeters < 0) "" else "Distance:",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
             text = displayText,
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary
+            color = if (distanceMeters < 0)
+                MaterialTheme.colorScheme.onSurfaceVariant
+            else
+                MaterialTheme.colorScheme.primary
         )
     }
 }

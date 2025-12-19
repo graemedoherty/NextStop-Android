@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -25,119 +26,89 @@ import com.example.nextstop_android.R
 import com.example.nextstop_android.service.LocationTrackingService
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.maps.model.CameraPosition
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.LatLngBounds
-import com.google.android.gms.maps.model.MapStyleOptions
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.*
 import com.google.maps.android.compose.*
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun MapsScreen(
     onBack: () -> Unit,
-    destinationStation: Station? = null,
+    destinationStation: Station?,
     viewModel: MapViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
 
-    /* ---------------------------------------------------
-     * MAP STYLE (LIGHT / DARK)
-     * --------------------------------------------------- */
+    /* ---------------- MAP STYLE ---------------- */
     val isDarkTheme = isSystemInDarkTheme()
-
     val mapProperties = remember(isDarkTheme) {
         MapProperties(
+            isMyLocationEnabled = true,
             mapStyleOptions = try {
                 MapStyleOptions.loadRawResourceStyle(
                     context,
-                    if (isDarkTheme) {
-                        R.raw.map_dark_style
-                    } else {
-                        R.raw.map_light_style
-                    }
+                    if (isDarkTheme) R.raw.map_dark_style else R.raw.map_light_style
                 )
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 null
             }
         )
     }
 
-    /* ---------------------------------------------------
-     * PERMISSIONS
-     * --------------------------------------------------- */
-    val permissionsList = buildList {
-        add(Manifest.permission.ACCESS_FINE_LOCATION)
-        add(Manifest.permission.ACCESS_COARSE_LOCATION)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            add(Manifest.permission.POST_NOTIFICATIONS)
-        }
-    }
+    /* ---------------- PERMISSIONS ---------------- */
+    val permissions = rememberMultiplePermissionsState(
+        listOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+    )
 
-    val locationPermissions = rememberMultiplePermissionsState(permissionsList)
-    var showPermissionRationale by remember { mutableStateOf(false) }
+    /* ---------------- START ALARM ---------------- */
+    LaunchedEffect(destinationStation, permissions.allPermissionsGranted) {
+        if (destinationStation != null && permissions.allPermissionsGranted) {
+            viewModel.startAlarm(destinationStation)
 
-    /* ---------------------------------------------------
-     * INITIAL LOCATION
-     * --------------------------------------------------- */
-    LaunchedEffect(locationPermissions.allPermissionsGranted) {
-        if (locationPermissions.allPermissionsGranted) {
-            try {
-                val client = LocationServices.getFusedLocationProviderClient(context)
-                client.lastLocation.addOnSuccessListener { location ->
-                    location?.let {
-                        viewModel.updateTracking(it.latitude, it.longitude, 0)
-                    }
-                }
-            } catch (_: SecurityException) { }
-        }
-    }
+            val intent = Intent(context, LocationTrackingService::class.java).apply {
+                action = LocationTrackingService.ACTION_START
+                putExtra(
+                    LocationTrackingService.EXTRA_DESTINATION_LAT,
+                    destinationStation.latitude
+                )
+                putExtra(
+                    LocationTrackingService.EXTRA_DESTINATION_LNG,
+                    destinationStation.longitude
+                )
+                putExtra(
+                    LocationTrackingService.EXTRA_DESTINATION_NAME,
+                    destinationStation.name
+                )
+            }
 
-    /* ---------------------------------------------------
-     * START TRACKING
-     * --------------------------------------------------- */
-    LaunchedEffect(destinationStation, locationPermissions.allPermissionsGranted) {
-        destinationStation?.let {
-            viewModel.startAlarm(it)
-
-            if (locationPermissions.allPermissionsGranted) {
-                val intent = Intent(context, LocationTrackingService::class.java).apply {
-                    action = LocationTrackingService.ACTION_START
-                    putExtra(LocationTrackingService.EXTRA_DESTINATION_LAT, it.latitude)
-                    putExtra(LocationTrackingService.EXTRA_DESTINATION_LNG, it.longitude)
-                    putExtra(LocationTrackingService.EXTRA_DESTINATION_NAME, it.name)
-                }
-
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(intent)
-                } else {
-                    context.startService(intent)
-                }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
             } else {
-                if (locationPermissions.shouldShowRationale) {
-                    showPermissionRationale = true
-                } else {
-                    locationPermissions.launchMultiplePermissionRequest()
-                }
+                context.startService(intent)
             }
         }
     }
 
-    /* ---------------------------------------------------
-     * LOCATION UPDATES
-     * --------------------------------------------------- */
-    DisposableEffect(Unit) {
+    /* ---------------- BROADCAST RECEIVER ---------------- */
+    DisposableEffect(context) {
         val receiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                val distance =
-                    intent?.getIntExtra(LocationTrackingService.EXTRA_DISTANCE, -1) ?: -1
-                val lat =
-                    intent?.getDoubleExtra(LocationTrackingService.EXTRA_USER_LAT, 0.0) ?: 0.0
-                val lng =
-                    intent?.getDoubleExtra(LocationTrackingService.EXTRA_USER_LNG, 0.0) ?: 0.0
+            override fun onReceive(ctx: Context?, intent: Intent?) {
+                if (intent?.action != LocationTrackingService.ACTION_DISTANCE_UPDATE) return
 
-                if (distance >= 0 && lat != 0.0 && lng != 0.0) {
+                val distance =
+                    intent.getIntExtra(LocationTrackingService.EXTRA_DISTANCE, -1)
+                val lat =
+                    intent.getDoubleExtra(LocationTrackingService.EXTRA_USER_LAT, 0.0)
+                val lng =
+                    intent.getDoubleExtra(LocationTrackingService.EXTRA_USER_LNG, 0.0)
+
+                Log.d("MapsScreen", "Broadcast received: $distance m")
+
+                if (lat != 0.0 && lng != 0.0) {
                     viewModel.updateTracking(lat, lng, distance)
                 }
             }
@@ -150,53 +121,47 @@ fun MapsScreen(
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
 
-        onDispose { context.unregisterReceiver(receiver) }
+        onDispose {
+            context.unregisterReceiver(receiver)
+        }
     }
 
-    /* ---------------------------------------------------
-     * MAP STATE
-     * --------------------------------------------------- */
-    val userLocation = uiState.userLocation?.let { LatLng(it.first, it.second) }
-    val destinationLatLng = uiState.destinationLocation?.let { LatLng(it.first, it.second) }
+    /* ---------------- MAP STATE ---------------- */
+    val userLatLng = uiState.userLocation?.let { LatLng(it.first, it.second) }
+    val destinationLatLng =
+        uiState.destinationLocation?.let { LatLng(it.first, it.second) }
 
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(
-            destinationLatLng ?: LatLng(53.4509, -6.1501),
-            11f
-        )
-    }
+    val cameraPositionState = rememberCameraPositionState()
 
-    var hasZoomedToFit by remember { mutableStateOf(false) }
-
-    LaunchedEffect(userLocation, destinationLatLng) {
-        if (!hasZoomedToFit && userLocation != null && destinationLatLng != null) {
+    LaunchedEffect(userLatLng, destinationLatLng) {
+        if (userLatLng != null && destinationLatLng != null) {
             val bounds = LatLngBounds.builder()
-                .include(userLocation)
+                .include(userLatLng)
                 .include(destinationLatLng)
                 .build()
 
             cameraPositionState.animate(
-                com.google.android.gms.maps.CameraUpdateFactory
-                    .newLatLngBounds(bounds, 150),
+                CameraUpdateFactory.newLatLngBounds(bounds, 150),
                 800
             )
-            hasZoomedToFit = true
         }
     }
 
-    /* ---------------------------------------------------
-     * UI
-     * --------------------------------------------------- */
+    /* ---------------- UI ---------------- */
     Box(Modifier.fillMaxSize()) {
+
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
             properties = mapProperties
         ) {
-            userLocation?.let {
+            userLatLng?.let {
                 Marker(
                     state = rememberMarkerState(position = it),
-                    title = "Your Location"
+                    title = "You",
+                    icon = BitmapDescriptorFactory.defaultMarker(
+                        BitmapDescriptorFactory.HUE_AZURE
+                    )
                 )
             }
 
@@ -209,15 +174,17 @@ fun MapsScreen(
         }
 
         AnimatedVisibility(
-            visible = uiState.alarmActive && uiState.distanceToDestination >= 0,
+            visible = uiState.alarmActive,
             enter = slideInVertically { it },
             exit = slideOutVertically { it },
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
             AlarmCard(
-                destination = uiState.selectedStation?.name ?: "Unknown",
+                destination = uiState.selectedStation?.name ?: "",
                 distanceMeters = uiState.distanceToDestination,
-                status = AlarmStatus.ACTIVE,
+                status =
+                    if (uiState.alarmArrived) AlarmStatus.ARRIVED
+                    else AlarmStatus.ACTIVE,
                 onCancel = {
                     context.startService(
                         Intent(context, LocationTrackingService::class.java).apply {
@@ -230,34 +197,8 @@ fun MapsScreen(
             )
         }
     }
-
-    /* ---------------------------------------------------
-     * PERMISSION DIALOG
-     * --------------------------------------------------- */
-    if (showPermissionRationale) {
-        AlertDialog(
-            onDismissRequest = { showPermissionRationale = false },
-            title = { Text("Location Permission Required") },
-            text = { Text("This app needs location access to track your journey.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showPermissionRationale = false
-                    locationPermissions.launchMultiplePermissionRequest()
-                }) { Text("Grant Permission") }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showPermissionRationale = false
-                    onBack()
-                }) { Text("Cancel") }
-            }
-        )
-    }
 }
 
-/* ---------------------------------------------------
- * MODEL
- * --------------------------------------------------- */
 data class Station(
     val name: String,
     val type: String,
