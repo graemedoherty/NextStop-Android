@@ -20,19 +20,19 @@ fun Step3Screen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp)
+            .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 24.dp)
     ) {
         Text(
             text = "Step 3: Confirm alarm",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         Text(
             text = "Transport",
-            fontSize = 14.sp,
+            fontSize = 13.sp,
             color = MaterialTheme.colorScheme.outline
         )
         Text(
@@ -41,11 +41,11 @@ fun Step3Screen(
             fontWeight = FontWeight.Medium
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
             text = "Destination",
-            fontSize = 14.sp,
+            fontSize = 13.sp,
             color = MaterialTheme.colorScheme.outline
         )
         Text(
@@ -54,14 +54,14 @@ fun Step3Screen(
             fontWeight = FontWeight.Medium
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.weight(1f)) // Added weight to push buttons down consistently
 
         PrimaryButton(
             text = "Create Alarm",
             onClick = onAlarmSet
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         SecondaryButton(
             text = "Back",

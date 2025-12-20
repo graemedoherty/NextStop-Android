@@ -13,58 +13,58 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.nextstop_android.ui.components.PrimaryButton
-import com.example.nextstop_android.ui.components.SecondaryButton
 
 @Composable
 fun Step1Screen(
-    onTransportSelected: (String) -> Unit
+    selectedTransport: String?,
+    onTransportSelected: (String) -> Unit,
+    onNext: () -> Unit // ✅ Added parameter
 ) {
-    var selected by remember { mutableStateOf<String?>(null) }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.Top
     ) {
         Text(
             text = "Step 1: Select mode of transport",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         listOf("Train", "Luas", "Bus").forEach { mode ->
+            val isSelected = selectedTransport == mode
+
             OutlinedButton(
-                onClick = { selected = mode },
+                onClick = { onTransportSelected(mode) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp)
-                    .padding(vertical = 6.dp),
+                    .height(48.dp)
+                    .padding(vertical = 4.dp),
                 shape = RoundedCornerShape(12.dp),
                 border = BorderStroke(
                     width = 2.dp,
-                    color = if (selected == mode)
-                        MaterialTheme.colorScheme.primary
-                    else
-                        MaterialTheme.colorScheme.outline
+                    color = if (isSelected) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.outline
                 ),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = if (isSelected)
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
+                    else MaterialTheme.colorScheme.surface
                 )
             ) {
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Text(
                         text = mode,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Medium
+                        fontSize = 16.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurface
                     )
 
-                    if (selected == mode) {
+                    if (isSelected) {
                         Icon(
                             imageVector = Icons.Default.Check,
                             contentDescription = null,
@@ -76,12 +76,12 @@ fun Step1Screen(
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         PrimaryButton(
             text = "Next",
-            enabled = selected != null,
-            onClick = { selected?.let(onTransportSelected) }
+            enabled = selectedTransport != null,
+            onClick = onNext // ✅ Now uses the transition callback
         )
     }
 }

@@ -1,5 +1,6 @@
 package com.example.nextstop_android.ui.stepper
 
+import android.content.Intent
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -8,19 +9,21 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.nextstop_android.ui.components.AdSection
+import com.example.nextstop_android.service.LocationTrackingService
+import com.example.nextstop_android.ui.maps.MapViewModel
 import com.example.nextstop_android.ui.maps.Station
 import com.example.nextstop_android.viewmodel.StepperViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StepperScreen(
-    onAlarmCreated: (Station) -> Unit,  // Changed to accept Station parameter
-    onDestinationSelected: (latitude: Double, longitude: Double) -> Unit = { _, _ -> },
+    onAlarmCreated: (Station) -> Unit,
+    mapViewModel: MapViewModel,
     viewModel: StepperViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val currentStep by viewModel.currentStep.collectAsState()
     val selectedTransport by viewModel.selectedTransport.collectAsState()
     val selectedStation by viewModel.selectedStation.collectAsState()
@@ -28,46 +31,64 @@ fun StepperScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         StepIndicators(currentStep)
 
-
         Box(modifier = Modifier.weight(1f)) {
             AnimatedContent(
                 targetState = currentStep,
                 transitionSpec = {
-                    slideInHorizontally { it } togetherWith
-                            slideOutHorizontally { -it }
+                    slideInHorizontally { it } togetherWith slideOutHorizontally { -it }
                 },
                 label = "stepTransition"
             ) { step ->
                 when (step) {
                     1 -> Step1Screen(
-                        onTransportSelected = viewModel::selectTransport
+                        selectedTransport = selectedTransport,
+                        onTransportSelected = viewModel::selectTransport,
+                        onNext = viewModel::nextStep
                     )
 
+// Inside StepperScreen.kt -> Step 2
                     2 -> Step2Screen(
                         selectedTransport = selectedTransport ?: "",
-                        onStationSelected = { stationName, latitude, longitude ->
-                            viewModel.selectStation(stationName, latitude, longitude)
+                        savedStation = selectedStation,
+                        onStationSelected = { name, lat, lng ->
+                            // 1. Update the Stepper state (for the UI/Next button)
+                            viewModel.selectStation(name, lat, lng)
+
+                            // 2. 🔑 NEW/FIX: Update the Map state immediately to show the marker
+                            val stationObj = Station(
+                                name = name,
+                                type = selectedTransport ?: "",
+                                latitude = lat,
+                                longitude = lng,
+                                distance = 0
+                            )
+                            mapViewModel.setDestination(stationObj)
                         },
-                        onBack = viewModel::goBack
+                        onClearStation = {
+                            viewModel.clearStation()
+                            mapViewModel.cancelAlarm() // Also clears the marker from map
+                        },
+                        onNext = viewModel::nextStep,
+                        onBack = viewModel::goBack,
+                        mapViewModel = mapViewModel
                     )
 
                     3 -> Step3Screen(
                         selectedTransport = selectedTransport ?: "",
-                        selectedStation = selectedStation ?: "",
+                        selectedStation = selectedStation?.name ?: "",
+// Inside StepperScreen Step 3 onAlarmSet
                         onAlarmSet = {
-                            val location = viewModel.selectedStationLocation.value
-                            if (location != null) {
-                                onDestinationSelected(location.first, location.second)
-
-                                // Create Station object to pass to Map
-                                val station = Station(
-                                    name = selectedStation ?: "Unknown Station",
-                                    type = selectedTransport ?: "Unknown",
-                                    latitude = location.first,
-                                    longitude = location.second,
-                                    distance = 0 // You can calculate this if needed
-                                )
+                            selectedStation?.let { station ->
                                 onAlarmCreated(station)
+
+                                // 🔑 THIS IS CRITICAL: Update the service with the new destination
+                                val serviceIntent = Intent(context, LocationTrackingService::class.java).apply {
+                                    action = LocationTrackingService.ACTION_SET_DESTINATION
+                                    putExtra(LocationTrackingService.EXTRA_DESTINATION_LAT, station.latitude)
+                                    putExtra(LocationTrackingService.EXTRA_DESTINATION_LNG, station.longitude)
+                                    putExtra(LocationTrackingService.EXTRA_DESTINATION_NAME, station.name)
+                                }
+                                context.startService(serviceIntent)
                             }
                         },
                         onBack = viewModel::goBack
@@ -75,7 +96,5 @@ fun StepperScreen(
                 }
             }
         }
-
-        AdSection()
     }
 }
