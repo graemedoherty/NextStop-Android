@@ -10,13 +10,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
 @Composable
 fun StepIndicators(currentStep: Int) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            // Reduced vertical padding from 16dp to 8dp top and 0dp bottom
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 0.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -26,12 +26,10 @@ fun StepIndicators(currentStep: Int) {
 
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(36.dp) // Slightly smaller circles (40 -> 36) saves vertical space
                     .background(
-                        if (active)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.surfaceVariant,
+                        if (active) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.surfaceVariant,
                         RoundedCornerShape(50)
                     ),
                 contentAlignment = Alignment.Center
@@ -39,24 +37,20 @@ fun StepIndicators(currentStep: Int) {
                 Text(
                     text = step.toString(),
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = if (active)
-                        MaterialTheme.colorScheme.onPrimary
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant
+                    fontSize = 14.sp,
+                    color = if (active) MaterialTheme.colorScheme.onPrimary
+                    else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
             if (step < 3) {
-                Divider(
+                HorizontalDivider( // Updated from Divider to HorizontalDivider (M3)
                     modifier = Modifier
                         .weight(1f)
                         .height(2.dp)
-                        .padding(horizontal = 8.dp),
-                    color = if (step < currentStep)
-                        MaterialTheme.colorScheme.primary
-                    else
-                        MaterialTheme.colorScheme.surfaceVariant
+                        .padding(horizontal = 4.dp), // Reduced from 8dp
+                    color = if (step < currentStep) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.surfaceVariant
                 )
             }
         }

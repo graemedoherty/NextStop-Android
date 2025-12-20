@@ -7,8 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import com.example.nextstop_android.navigation.NextStopNavGraph
 import com.example.nextstop_android.service.LocationTrackingService
+import com.example.nextstop_android.ui.journey.JourneyScreen
 import com.example.nextstop_android.ui.theme.NextStopAndroidTheme
 
 class MainActivity : ComponentActivity() {
@@ -17,6 +17,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         // 🔑 Read extras coming from notification intent
+        // (We keep this even if Step 1 doesn't use it yet)
         val openAlarm =
             intent?.getBooleanExtra(
                 LocationTrackingService.EXTRA_OPEN_ALARM,
@@ -46,12 +47,15 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    NextStopNavGraph(
-                        openAlarm = openAlarm,
-                        stationName = stationName,
-                        latitude = latitude,
-                        longitude = longitude
-                    )
+                    /**
+                     * STEP 1:
+                     * - Stepper on top
+                     * - Map underneath
+                     * - Live user location only
+                     *
+                     * Alarm restore / navigation will be reintroduced later
+                     */
+                    JourneyScreen()
                 }
             }
         }

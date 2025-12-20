@@ -1,5 +1,6 @@
 package com.example.nextstop_android.ui.stepper
 
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,17 +15,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.nextstop_android.data.StationDataLoader
+import com.example.nextstop_android.ui.maps.MapViewModel
+import com.example.nextstop_android.ui.maps.Station
+import kotlin.math.*
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 fun Step2Screen(
     selectedTransport: String,
+    savedStation: Station?,
     onStationSelected: (stationName: String, latitude: Double, longitude: Double) -> Unit,
-    onBack: () -> Unit
+    onClearStation: () -> Unit,
+    onNext: () -> Unit, // ✅ Added parameter
+    onBack: () -> Unit,
+    mapViewModel: MapViewModel
 ) {
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val dataLoader = remember { StationDataLoader(context) }
+    val mapUiState by mapViewModel.uiState.collectAsState()
+    val userLocation = mapUiState.userLocation
 
     val stationDataList = remember(selectedTransport) {
         when (selectedTransport) {
@@ -36,172 +46,108 @@ fun Step2Screen(
     }
 
     val stationNames = stationDataList.map { it.getName() }
-
     var searchText by remember { mutableStateOf("") }
-    var selectedStation by remember { mutableStateOf<String?>(null) }
-
     val filteredStations = remember(searchText, selectedTransport) {
-        if (searchText.length < 3) {
-            emptyList()
-        } else {
-            stationNames.filter {
-                it.contains(searchText, ignoreCase = true)
-            }
-        }
+        if (searchText.length < 3) emptyList()
+        else stationNames.filter { it.contains(searchText, ignoreCase = true) }
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = "Step 2: Select destination station",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(bottom = 24.dp)
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(bottom = 12.dp)
         )
 
-        OutlinedTextField(
-            value = searchText,
-            onValueChange = { searchText = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Station (min 3 letters)") },
-            shape = RoundedCornerShape(12.dp),
-            singleLine = true
-        )
-
-        if (searchText.isNotEmpty() && searchText.length < 3) {
-            Text(
-                text = "Type at least 3 characters to see results",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.padding(top = 8.dp)
+        if (savedStation == null) {
+            OutlinedTextField(
+                value = searchText,
+                onValueChange = { searchText = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Station (min 3 letters)") },
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true
             )
-        }
-
-        // Show selected station chip if one is selected
-        if (selectedStation != null) {
-            Spacer(modifier = Modifier.height(16.dp))
-
+        } else {
+            Spacer(modifier = Modifier.height(8.dp))
             Surface(
                 shape = RoundedCornerShape(12.dp),
                 color = MaterialTheme.colorScheme.primaryContainer,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        Text(
-                            text = "Selected Station:",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Text(
-                            text = selectedStation ?: "",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+                        Text(text = "Selected Station:", fontSize = 11.sp)
+                        Text(text = savedStation.name, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                     }
-                    TextButton(
-                        onClick = {
-                            selectedStation = null
-                            searchText = ""
-                        }
-                    ) {
-                        Text("Change")
+                    TextButton(onClick = { onClearStation() }) {
+                        Text("Change", fontSize = 13.sp)
                     }
                 }
             }
         }
 
-        if (filteredStations.isNotEmpty() && selectedStation == null) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                filteredStations.take(6).forEach { station ->
+        if (filteredStations.isNotEmpty() && savedStation == null) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                filteredStations.take(5).forEach { stationName ->
                     Surface(
                         onClick = {
-                            val stationData =
-                                stationDataList.find { it.getName() == station }
-
+                            val stationData = stationDataList.find { it.getName() == stationName }
                             stationData?.let {
-                                selectedStation = station
-                                searchText = ""  // Clear the search field
                                 keyboardController?.hide()
+                                onStationSelected(stationName, it.getLatitude(), it.getLongitude())
                             }
                         },
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(10.dp),
                         tonalElevation = 2.dp,
-                        border = BorderStroke(
-                            1.dp,
-                            MaterialTheme.colorScheme.outline
-                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(
-                            text = station,
-                            modifier = Modifier.padding(16.dp),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        Text(text = stationName, modifier = Modifier.padding(16.dp), fontSize = 15.sp)
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.weight(1f))
 
         Button(
-            onClick = {
-                selectedStation?.let { name ->
-                    val stationData =
-                        stationDataList.find { it.getName() == name }
-
-                    stationData?.let {
-                        onStationSelected(
-                            name,
-                            it.getLatitude(),
-                            it.getLongitude()
-                        )
-                    }
-                }
-            },
-            enabled = selectedStation != null,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
+            onClick = onNext, // ✅ Now uses the transition callback
+            enabled = savedStation != null,
+            modifier = Modifier.fillMaxWidth().height(48.dp),
             shape = RoundedCornerShape(12.dp)
         ) {
-            Text(
-                text = "Next",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium
-            )
+            Text("Next", fontSize = 16.sp, fontWeight = FontWeight.Medium)
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         OutlinedButton(
             onClick = onBack,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            shape = RoundedCornerShape(12.dp)
         ) {
-            Text(
-                text = "Back",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.primary
-            )
+            Text("Back")
         }
     }
+}
+
+private fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Int {
+    val earthRadius = 6371000.0
+    val dLat = Math.toRadians(lat2 - lat1)
+    val dLon = Math.toRadians(lon2 - lon1)
+    val a = sin(dLat / 2) * sin(dLat / 2) + cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) * sin(dLon / 2) * sin(dLon / 2)
+    val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    return (earthRadius * c).roundToInt()
 }

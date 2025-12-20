@@ -13,9 +13,6 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,13 +31,12 @@ import com.google.maps.android.compose.*
 @Composable
 fun MapsScreen(
     onBack: () -> Unit,
-    destinationStation: Station?,
+    destinationStation: Station?, // Still used for initial entry if needed
     viewModel: MapViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
 
-    /* ---------------- MAP STYLE ---------------- */
     val isDarkTheme = isSystemInDarkTheme()
     val mapProperties = remember(isDarkTheme) {
         MapProperties(
@@ -50,41 +46,23 @@ fun MapsScreen(
                     context,
                     if (isDarkTheme) R.raw.map_dark_style else R.raw.map_light_style
                 )
-            } catch (_: Exception) {
-                null
-            }
+            } catch (_: Exception) { null }
         )
     }
 
-    /* ---------------- PERMISSIONS ---------------- */
+    val cameraPositionState = rememberCameraPositionState()
+    var hasCenteredOnUser by remember { mutableStateOf(false) }
+
     val permissions = rememberMultiplePermissionsState(
-        listOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        )
+        listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
     )
 
-    /* ---------------- START ALARM ---------------- */
-    LaunchedEffect(destinationStation, permissions.allPermissionsGranted) {
-        if (destinationStation != null && permissions.allPermissionsGranted) {
-            viewModel.startAlarm(destinationStation)
-
+    // Start background tracking service on launch
+    LaunchedEffect(permissions.allPermissionsGranted) {
+        if (permissions.allPermissionsGranted) {
             val intent = Intent(context, LocationTrackingService::class.java).apply {
                 action = LocationTrackingService.ACTION_START
-                putExtra(
-                    LocationTrackingService.EXTRA_DESTINATION_LAT,
-                    destinationStation.latitude
-                )
-                putExtra(
-                    LocationTrackingService.EXTRA_DESTINATION_LNG,
-                    destinationStation.longitude
-                )
-                putExtra(
-                    LocationTrackingService.EXTRA_DESTINATION_NAME,
-                    destinationStation.name
-                )
             }
-
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
             } else {
@@ -93,105 +71,90 @@ fun MapsScreen(
         }
     }
 
-    /* ---------------- BROADCAST RECEIVER ---------------- */
+    // Listen for distance updates from Service
     DisposableEffect(context) {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(ctx: Context?, intent: Intent?) {
                 if (intent?.action != LocationTrackingService.ACTION_DISTANCE_UPDATE) return
 
-                val distance =
-                    intent.getIntExtra(LocationTrackingService.EXTRA_DISTANCE, -1)
-                val lat =
-                    intent.getDoubleExtra(LocationTrackingService.EXTRA_USER_LAT, 0.0)
-                val lng =
-                    intent.getDoubleExtra(LocationTrackingService.EXTRA_USER_LNG, 0.0)
-
-                Log.d("MapsScreen", "Broadcast received: $distance m")
+                val distance = intent.getIntExtra(LocationTrackingService.EXTRA_DISTANCE, -1)
+                val lat = intent.getDoubleExtra(LocationTrackingService.EXTRA_USER_LAT, 0.0)
+                val lng = intent.getDoubleExtra(LocationTrackingService.EXTRA_USER_LNG, 0.0)
 
                 if (lat != 0.0 && lng != 0.0) {
                     viewModel.updateTracking(lat, lng, distance)
+
+                    if (!hasCenteredOnUser) {
+                        hasCenteredOnUser = true
+                        cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), 14f))
+                    }
                 }
             }
         }
-
         ContextCompat.registerReceiver(
-            context,
-            receiver,
-            IntentFilter(LocationTrackingService.ACTION_DISTANCE_UPDATE),
-            ContextCompat.RECEIVER_NOT_EXPORTED
+            context, receiver, IntentFilter(LocationTrackingService.ACTION_DISTANCE_UPDATE), ContextCompat.RECEIVER_NOT_EXPORTED
         )
-
-        onDispose {
-            context.unregisterReceiver(receiver)
-        }
+        onDispose { context.unregisterReceiver(receiver) }
     }
 
-    /* ---------------- MAP STATE ---------------- */
+    // Auto-zoom to fit User and Destination
     val userLatLng = uiState.userLocation?.let { LatLng(it.first, it.second) }
-    val destinationLatLng =
-        uiState.destinationLocation?.let { LatLng(it.first, it.second) }
-
-    val cameraPositionState = rememberCameraPositionState()
+    val destinationLatLng = uiState.destinationLocation?.let { LatLng(it.first, it.second) }
 
     LaunchedEffect(userLatLng, destinationLatLng) {
         if (userLatLng != null && destinationLatLng != null) {
-            val bounds = LatLngBounds.builder()
-                .include(userLatLng)
-                .include(destinationLatLng)
-                .build()
-
-            cameraPositionState.animate(
-                CameraUpdateFactory.newLatLngBounds(bounds, 150),
-                800
-            )
+            val bounds = LatLngBounds.builder().include(userLatLng).include(destinationLatLng).build()
+            cameraPositionState.animate(CameraUpdateFactory.newLatLngBounds(bounds, 200), 1000)
         }
     }
 
-    /* ---------------- UI ---------------- */
     Box(Modifier.fillMaxSize()) {
-
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
-            properties = mapProperties
+            properties = mapProperties,
+            uiSettings = MapUiSettings(zoomControlsEnabled = false)
         ) {
+            // Marker for current user position
             userLatLng?.let {
                 Marker(
-                    state = rememberMarkerState(position = it),
-                    title = "You",
-                    icon = BitmapDescriptorFactory.defaultMarker(
-                        BitmapDescriptorFactory.HUE_AZURE
-                    )
+                    state = MarkerState(position = it),
+                    title = "Your Location",
+                    icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_CYAN)
                 )
             }
 
+            // Marker for destination station
             destinationLatLng?.let {
                 Marker(
-                    state = rememberMarkerState(position = it),
-                    title = "Destination"
+                    state = MarkerState(position = it),
+                    title = uiState.selectedStation?.name ?: "Destination",
+                    icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_VIOLET)
                 )
             }
         }
 
+        /* 🔑 IMPROVED VISIBILITY LOGIC */
         AnimatedVisibility(
-            visible = uiState.alarmActive,
+            visible = uiState.alarmArmed,
             enter = slideInVertically { it },
             exit = slideOutVertically { it },
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
             AlarmCard(
-                destination = uiState.selectedStation?.name ?: "",
+                destination = uiState.selectedStation?.name ?: "Destination",
                 distanceMeters = uiState.distanceToDestination,
-                status =
-                    if (uiState.alarmArrived) AlarmStatus.ARRIVED
-                    else AlarmStatus.ACTIVE,
+                status = if (uiState.alarmArrived) AlarmStatus.ARRIVED else AlarmStatus.ACTIVE,
                 onCancel = {
-                    context.startService(
-                        Intent(context, LocationTrackingService::class.java).apply {
-                            action = LocationTrackingService.ACTION_STOP
-                        }
-                    )
+                    // 1. Stop the background service
+                    context.startService(Intent(context, LocationTrackingService::class.java).apply {
+                        action = LocationTrackingService.ACTION_STOP
+                    })
+
+                    // 2. Clear the Map markers and state
                     viewModel.cancelAlarm()
+
+                    // 3. 🔑 Trigger the back callback to reset Stepper to Step 1
                     onBack()
                 }
             )
@@ -199,10 +162,13 @@ fun MapsScreen(
     }
 }
 
+/**
+ * Represents a transit station destination.
+ */
 data class Station(
     val name: String,
     val type: String,
     val latitude: Double,
     val longitude: Double,
-    val distance: Int
+    val distance: Int = 0
 )
