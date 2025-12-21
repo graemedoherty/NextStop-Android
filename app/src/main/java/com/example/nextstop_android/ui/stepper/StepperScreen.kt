@@ -13,7 +13,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nextstop_android.service.LocationTrackingService
 import com.example.nextstop_android.ui.maps.MapViewModel
-import com.example.nextstop_android.ui.maps.Station
+import com.example.nextstop_android.model.Station
 import com.example.nextstop_android.viewmodel.StepperViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)

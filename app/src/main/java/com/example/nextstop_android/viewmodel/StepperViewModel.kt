@@ -1,7 +1,7 @@
 package com.example.nextstop_android.viewmodel
 
 import androidx.lifecycle.ViewModel
-import com.example.nextstop_android.ui.maps.Station
+import com.example.nextstop_android.model.Station // 🔑 KEY FIX: Change ui.maps to model
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,10 +22,10 @@ class StepperViewModel : ViewModel() {
             _selectedTransport.value = transport
             _selectedStation.value = null
         }
-        // Removed the automatic step increment from here
     }
 
     fun selectStation(stationName: String, latitude: Double, longitude: Double) {
+        // 🔑 Ensure these property names match Station.kt in your model package
         _selectedStation.value = Station(
             name = stationName,
             type = _selectedTransport.value.orEmpty(),
@@ -33,7 +33,6 @@ class StepperViewModel : ViewModel() {
             longitude = longitude,
             distance = 0
         )
-        // Removed the automatic step increment from here
     }
 
     fun nextStep() {

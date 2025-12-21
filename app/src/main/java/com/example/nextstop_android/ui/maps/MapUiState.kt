@@ -1,5 +1,7 @@
 package com.example.nextstop_android.ui.maps
 
+import com.example.nextstop_android.model.Station
+
 data class MapUiState(
     val stations: List<Station> = emptyList(),
     val selectedStation: Station? = null,

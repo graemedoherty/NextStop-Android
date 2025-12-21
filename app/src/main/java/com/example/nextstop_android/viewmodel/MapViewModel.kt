@@ -1,6 +1,7 @@
 package com.example.nextstop_android.ui.maps
 
 import androidx.lifecycle.ViewModel
+import com.example.nextstop_android.model.Station
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -19,7 +20,6 @@ class MapViewModel : ViewModel() {
         }
     }
 
-    // Step 2: Just set destination marker (no alarm yet)
     fun setDestination(station: Station) {
         _uiState.update {
             it.copy(
@@ -29,16 +29,15 @@ class MapViewModel : ViewModel() {
         }
     }
 
-    // Step 3: Arm the alarm
     fun startAlarm(station: Station) {
         _uiState.update {
             it.copy(
                 selectedStation = station,
                 destinationLocation = station.latitude to station.longitude,
-                alarmArmed = true,
-                alarmActive = true,
+                alarmArmed = true,          // 🔑 Alarm UI should appear
+                alarmActive = true,         // 🔑 Tracking is active
                 alarmArrived = false,
-                distanceToDestination = -1 // 🔑 Reset to -1 to show "Calculating..."
+                distanceToDestination = -1
             )
         }
     }
@@ -61,17 +60,24 @@ class MapViewModel : ViewModel() {
         longitude: Double,
         distanceMeters: Int
     ) {
-        // Only mark as arrived if we have a valid positive distance within threshold
-        val arrived = distanceMeters in 1..100
+        val arrived = distanceMeters in 0..100 && distanceMeters != -1
 
         _uiState.update {
             it.copy(
                 userLocation = latitude to longitude,
                 distanceToDestination = distanceMeters,
                 alarmArrived = arrived,
-                // 🔑 FIX: Keep alarm active even if distance is -1 (calculating)
-                // and don't kill it if distance is 0 during warmup.
-                alarmActive = it.alarmArmed && !arrived
+
+                alarmArmed = true,
+                alarmActive = true
+            )
+        }
+    }
+
+    fun updateUserLocation(latitude: Double, longitude: Double) {
+        _uiState.update {
+            it.copy(
+                userLocation = latitude to longitude
             )
         }
     }

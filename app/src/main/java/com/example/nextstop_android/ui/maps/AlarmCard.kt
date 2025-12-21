@@ -1,22 +1,15 @@
 package com.example.nextstop_android.ui.maps
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import kotlin.math.roundToInt
 
 enum class AlarmStatus {
     ACTIVE,
@@ -33,45 +26,26 @@ fun AlarmCard(
 ) {
     var showCancelDialog by remember { mutableStateOf(false) }
 
-    // Animated glow effect
-    val infiniteTransition = rememberInfiniteTransition(label = "glow")
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.8f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glowAlpha"
-    )
-
     val borderColor = when (status) {
-        AlarmStatus.ACTIVE -> Color(0xFF6F66E4).copy(alpha = glowAlpha)
-        AlarmStatus.ARRIVED -> Color(0xFF181515).copy(alpha = glowAlpha)
+        AlarmStatus.ACTIVE -> MaterialTheme.colorScheme.outline
+        AlarmStatus.ARRIVED -> MaterialTheme.colorScheme.error // Highlight red on arrival
     }
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .padding(16.dp)
-            .shadow(
-                elevation = 12.dp,
-                shape = RoundedCornerShape(16.dp),
-                ambientColor = borderColor,
-                spotColor = borderColor
-            )
             .border(
-                width = 2.dp,
+                width = 2.dp, // Slightly thicker border for visibility
                 color = borderColor,
                 shape = RoundedCornerShape(16.dp)
             ),
         shape = RoundedCornerShape(16.dp),
-        tonalElevation = 6.dp
+        tonalElevation = 4.dp
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            // Top row: status + cancel
+        Column(modifier = Modifier.padding(16.dp)) {
+
+            // Header row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -80,7 +54,7 @@ fun AlarmCard(
                 StatusBadge(status)
 
                 TextButton(onClick = { showCancelDialog = true }) {
-                    Text("Cancel")
+                    Text("Cancel", color = MaterialTheme.colorScheme.error)
                 }
             }
 
@@ -94,34 +68,30 @@ fun AlarmCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Distance display
+            // Distance / arrived text
             if (status == AlarmStatus.ACTIVE) {
                 DistanceDisplay(distanceMeters)
             } else {
                 Text(
                     text = "You have arrived at your destination!",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                 )
             }
         }
     }
 
-    // Cancel Confirmation Dialog
     if (showCancelDialog) {
         AlertDialog(
             onDismissRequest = { showCancelDialog = false },
             title = { Text("Cancel Alarm?") },
-            text = {
-                Text("Are you sure you want to cancel your alarm for $destination? You'll need to set a new alarm to continue tracking.")
-            },
+            text = { Text("Are you sure you want to cancel your alarm for $destination?") },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        showCancelDialog = false
-                        onCancel()
-                    }
-                ) {
+                TextButton(onClick = {
+                    showCancelDialog = false
+                    onCancel()
+                }) {
                     Text("Yes, Cancel", color = MaterialTheme.colorScheme.error)
                 }
             },
@@ -136,13 +106,10 @@ fun AlarmCard(
 
 @Composable
 private fun DistanceDisplay(distanceMeters: Int) {
+    // 🔑 Ensure that distanceMeters >= 0 is treated as valid
     val displayText = when {
         distanceMeters < 0 -> "Calculating distance..."
-        distanceMeters == 0 -> "0 m away"
-        distanceMeters >= 1000 -> {
-            val km = distanceMeters / 1000.0
-            "%.1f km away".format(km)
-        }
+        distanceMeters >= 1000 -> "%.1f km away".format(distanceMeters / 1000.0)
         else -> "$distanceMeters m away"
     }
 
@@ -151,17 +118,14 @@ private fun DistanceDisplay(distanceMeters: Int) {
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
-            text = if (distanceMeters < 0) "" else "Distance:",
+            text = "Distance:",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
             text = displayText,
             style = MaterialTheme.typography.titleMedium,
-            color = if (distanceMeters < 0)
-                MaterialTheme.colorScheme.onSurfaceVariant
-            else
-                MaterialTheme.colorScheme.primary
+            color = if (distanceMeters < 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary
         )
     }
 }
@@ -169,8 +133,8 @@ private fun DistanceDisplay(distanceMeters: Int) {
 @Composable
 private fun StatusBadge(status: AlarmStatus) {
     val (text, color) = when (status) {
-        AlarmStatus.ACTIVE -> "Active" to Color(0xFF2E7D32) // Green
-        AlarmStatus.ARRIVED -> "Arrived" to Color(0xFFC62828) // Red
+        AlarmStatus.ACTIVE -> "Active" to Color(0xFF2E7D32)
+        AlarmStatus.ARRIVED -> "Arrived" to Color(0xFFC62828)
     }
 
     Box(

@@ -11,6 +11,7 @@ import com.example.nextstop_android.ui.maps.MapViewModel
 import com.example.nextstop_android.ui.maps.MapsScreen
 import com.example.nextstop_android.ui.stepper.StepperScreen
 import com.example.nextstop_android.viewmodel.StepperViewModel
+import com.example.nextstop_android.model.Station
 
 @Composable
 fun JourneyScreen() {
