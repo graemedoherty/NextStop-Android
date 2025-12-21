@@ -17,7 +17,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         // 🔑 Read extras coming from notification intent
-        // (We keep this even if Step 1 doesn't use it yet)
         val openAlarm =
             intent?.getBooleanExtra(
                 LocationTrackingService.EXTRA_OPEN_ALARM,
@@ -47,14 +46,6 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    /**
-                     * STEP 1:
-                     * - Stepper on top
-                     * - Map underneath
-                     * - Live user location only
-                     *
-                     * Alarm restore / navigation will be reintroduced later
-                     */
                     JourneyScreen()
                 }
             }

@@ -3,6 +3,8 @@ package com.example.nextstop_android.ui.stepper
 import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.nextstop_android.data.StationDataLoader
 import com.example.nextstop_android.ui.maps.MapViewModel
-import com.example.nextstop_android.ui.maps.Station
+import com.example.nextstop_android.model.Station
 import kotlin.math.*
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
@@ -26,7 +28,7 @@ fun Step2Screen(
     savedStation: Station?,
     onStationSelected: (stationName: String, latitude: Double, longitude: Double) -> Unit,
     onClearStation: () -> Unit,
-    onNext: () -> Unit, // ✅ Added parameter
+    onNext: () -> Unit,
     onBack: () -> Unit,
     mapViewModel: MapViewModel
 ) {
@@ -52,9 +54,13 @@ fun Step2Screen(
         else stationNames.filter { it.contains(searchText, ignoreCase = true) }
     }
 
+    // Scroll state for the entire column
+    val scrollState = rememberScrollState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(scrollState)
             .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -120,10 +126,11 @@ fun Step2Screen(
             }
         }
 
-        Spacer(modifier = Modifier.weight(1f))
+        // Add extra spacer to ensure buttons are always visible
+        Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = onNext, // ✅ Now uses the transition callback
+            onClick = onNext,
             enabled = savedStation != null,
             modifier = Modifier.fillMaxWidth().height(48.dp),
             shape = RoundedCornerShape(12.dp)
