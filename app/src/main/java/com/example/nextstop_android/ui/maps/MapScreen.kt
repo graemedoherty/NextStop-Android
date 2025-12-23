@@ -1,21 +1,16 @@
 package com.example.nextstop_android.ui.maps
 
 import android.Manifest
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Looper
-import android.util.Log
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import android.provider.Settings // 🔑 Required for Overlay check
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
+import androidx.compose.material3.* // 🔑 Added for AlertDialog and Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,8 +19,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nextstop_android.R
-import com.example.nextstop_android.model.Station
-import com.example.nextstop_android.service.LocationTrackingService
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.android.gms.location.*
@@ -36,41 +29,82 @@ import com.google.maps.android.compose.*
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun MapsScreen(
-    destinationStation: Station?,
-    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
     viewModel: MapViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
 
-    /* ---------------- THEME + MAP STYLE ---------------- */
+    // 🔑 State for the "Wake Screen" explanation dialog
+    var showOverlayRationale by remember { mutableStateOf(false) }
 
-    val isDarkTheme = isSystemInDarkTheme()
+    /* ---------------- 1. OVERLAY PERMISSION RATIONALE ---------------- */
 
-    val permissions = rememberMultiplePermissionsState(
-        buildList {
-            add(Manifest.permission.ACCESS_FINE_LOCATION)
-            add(Manifest.permission.ACCESS_COARSE_LOCATION)
+    LaunchedEffect(Unit) {
+        // Check if we already have permission; if not, show the explanation
+        if (!Settings.canDrawOverlays(context)) {
+            showOverlayRationale = true
+        }
+    }
+
+    if (showOverlayRationale) {
+        AlertDialog(
+            onDismissRequest = { showOverlayRationale = false },
+            title = { Text("Wake Screen Permission") },
+            text = {
+                Text("To ensure your alarm wakes you up even if your screen is off, please allow 'Display over other apps' on the next screen.")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showOverlayRationale = false
+                    val intent = Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:${context.packageName}")
+                    )
+                    context.startActivity(intent)
+                }) {
+                    Text("Grant Permission")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showOverlayRationale = false }) {
+                    Text("Maybe Later")
+                }
+            }
+        )
+    }
+
+    /* ---------------- 2. PERMISSIONS (Updated for Android 13+) ---------------- */
+
+    // 🔑 We combine Location and Notification permissions here
+    val permissionList = remember {
+        mutableListOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ).apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 add(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
-    )
+    }
 
-    val mapProperties = remember(
-        isDarkTheme,
-        permissions.allPermissionsGranted
-    ) {
+    val permissionsState = rememberMultiplePermissionsState(permissionList)
+
+    LaunchedEffect(Unit) {
+        permissionsState.launchMultiplePermissionRequest()
+    }
+
+    /* ---------------- 3. MAP STYLE ---------------- */
+
+    val isDarkTheme = isSystemInDarkTheme()
+
+    val mapProperties = remember(isDarkTheme) {
         MapProperties(
-            isMyLocationEnabled = permissions.allPermissionsGranted, // Shows blue dot
+            isMyLocationEnabled = true,
             mapStyleOptions = try {
                 MapStyleOptions.loadRawResourceStyle(
                     context,
-                    if (isDarkTheme) {
-                        R.raw.map_dark_style
-                    } else {
-                        R.raw.map_light_style
-                    }
+                    if (isDarkTheme) R.raw.map_dark_style else R.raw.map_light_style
                 )
             } catch (e: Exception) {
                 null
@@ -78,18 +112,14 @@ fun MapsScreen(
         )
     }
 
-    LaunchedEffect(Unit) {
-        permissions.launchMultiplePermissionRequest()
-    }
-
-    /* ---------------- UI LOCATION TRACKING (ALWAYS ON) ---------------- */
+    /* ---------------- 4. LOCATION TRACKING (ALWAYS ON) ---------------- */
 
     val fusedLocationClient = remember {
         LocationServices.getFusedLocationProviderClient(context)
     }
 
-    DisposableEffect(permissions.allPermissionsGranted) {
-        if (!permissions.allPermissionsGranted) {
+    DisposableEffect(permissionsState.allPermissionsGranted) {
+        if (!permissionsState.allPermissionsGranted) {
             return@DisposableEffect onDispose { }
         }
 
@@ -104,7 +134,7 @@ fun MapsScreen(
 
         val request = LocationRequest.Builder(
             Priority.PRIORITY_HIGH_ACCURACY,
-            3_000L
+            2_000L
         )
             .setMinUpdateIntervalMillis(1_000L)
             .build()
@@ -128,71 +158,10 @@ fun MapsScreen(
         }
     }
 
-    /* ---------------- START ALARM ---------------- */
-
-    LaunchedEffect(destinationStation) {
-        destinationStation?.let {
-            viewModel.startAlarm(it)
-
-            val intent = Intent(context, LocationTrackingService::class.java).apply {
-                action = LocationTrackingService.ACTION_SET_DESTINATION
-                putExtra(LocationTrackingService.EXTRA_DESTINATION_LAT, it.latitude)
-                putExtra(LocationTrackingService.EXTRA_DESTINATION_LNG, it.longitude)
-                putExtra(LocationTrackingService.EXTRA_DESTINATION_NAME, it.name)
-            }
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
-        }
-    }
-
-    /* ---------------- SERVICE DISTANCE UPDATES ---------------- */
-
-    DisposableEffect(context) {
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(ctx: Context?, intent: Intent?) {
-                if (intent?.action != LocationTrackingService.ACTION_DISTANCE_UPDATE) return
-
-                val lat = intent.getDoubleExtra(
-                    LocationTrackingService.EXTRA_USER_LAT,
-                    0.0
-                )
-                val lng = intent.getDoubleExtra(
-                    LocationTrackingService.EXTRA_USER_LNG,
-                    0.0
-                )
-                val distance = intent.getIntExtra(
-                    LocationTrackingService.EXTRA_DISTANCE,
-                    -1
-                )
-
-                if (lat != 0.0 && lng != 0.0) {
-                    viewModel.updateTracking(lat, lng, distance)
-                }
-            }
-        }
-
-        ContextCompat.registerReceiver(
-            context,
-            receiver,
-            IntentFilter(LocationTrackingService.ACTION_DISTANCE_UPDATE),
-            ContextCompat.RECEIVER_NOT_EXPORTED
-        )
-
-        onDispose {
-            context.unregisterReceiver(receiver)
-        }
-    }
-
-    /* ---------------- CAMERA ---------------- */
+    /* ---------------- 5. CAMERA LOGIC ---------------- */
 
     val userLatLng = uiState.userLocation?.let { LatLng(it.first, it.second) }
-    val destinationLatLng = uiState.destinationLocation?.let {
-        LatLng(it.first, it.second)
-    }
+    val destinationLatLng = uiState.destinationLocation?.let { LatLng(it.first, it.second) }
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(
@@ -210,78 +179,49 @@ fun MapsScreen(
                     .build()
 
                 cameraPositionState.animate(
-                    CameraUpdateFactory.newLatLngBounds(bounds, 300),
-                    800
+                    CameraUpdateFactory.newLatLngBounds(bounds, 200),
+                    700
                 )
             }
 
             userLatLng != null -> {
                 cameraPositionState.animate(
                     CameraUpdateFactory.newLatLngZoom(userLatLng, 15f),
-                    800
+                    700
                 )
             }
         }
     }
 
-    /* ---------------- UI ---------------- */
+    /* ---------------- 6. MAP UI ---------------- */
 
-    Box(Modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize()) {
 
-        if (!permissions.allPermissionsGranted) {
-            Column(
+        if (!permissionsState.allPermissionsGranted) {
+            Box(
                 modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                contentAlignment = Alignment.Center
             ) {
-                Text("Location permission required")
-                Button(onClick = { permissions.launchMultiplePermissionRequest() }) {
-                    Text("Grant Permission")
-                }
+                // Shows if any required permission (Location or Notification) is missing
+                Text(
+                    text = "Location and Notification permissions are required.",
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.padding(16.dp)
+                )
             }
         } else {
-
             GoogleMap(
                 modifier = Modifier.fillMaxSize(),
                 cameraPositionState = cameraPositionState,
-                properties = mapProperties
+                properties = mapProperties,
+                uiSettings = MapUiSettings(zoomControlsEnabled = false)
             ) {
-                // Blue dot shows automatically via isMyLocationEnabled = true
-                // Only show destination marker
                 destinationLatLng?.let {
                     Marker(
                         state = rememberMarkerState(position = it),
-                        title = uiState.selectedStation?.name ?: "Destination",
-                        icon = BitmapDescriptorFactory.defaultMarker(
-                            BitmapDescriptorFactory.HUE_AZURE
-                        )
+                        title = uiState.selectedStation?.name ?: "Destination"
                     )
                 }
-            }
-
-            AnimatedVisibility(
-                visible = uiState.alarmArmed,
-                enter = slideInVertically { it },
-                exit = slideOutVertically { it },
-                modifier = Modifier.align(Alignment.BottomCenter)
-            ) {
-                AlarmCard(
-                    destination = uiState.selectedStation?.name ?: "",
-                    distanceMeters = uiState.distanceToDestination,
-                    status = if (uiState.alarmArrived)
-                        AlarmStatus.ARRIVED
-                    else
-                        AlarmStatus.ACTIVE,
-                    onCancel = {
-                        context.startService(
-                            Intent(context, LocationTrackingService::class.java).apply {
-                                action = LocationTrackingService.ACTION_STOP
-                            }
-                        )
-                        viewModel.cancelAlarm()
-                        onBack()
-                    }
-                )
             }
         }
     }

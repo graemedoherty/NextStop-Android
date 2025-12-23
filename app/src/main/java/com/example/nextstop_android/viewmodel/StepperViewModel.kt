@@ -1,7 +1,7 @@
 package com.example.nextstop_android.viewmodel
 
 import androidx.lifecycle.ViewModel
-import com.example.nextstop_android.model.Station // 🔑 KEY FIX: Change ui.maps to model
+import com.example.nextstop_android.model.Station
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,6 +17,11 @@ class StepperViewModel : ViewModel() {
     private val _selectedStation = MutableStateFlow<Station?>(null)
     val selectedStation: StateFlow<Station?> = _selectedStation.asStateFlow()
 
+    // 🔑 NEW METHOD: Forces the UI to the Journey/Map screen
+    fun moveToJourney() {
+        _currentStep.value = 3
+    }
+
     fun selectTransport(transport: String) {
         if (_selectedTransport.value != transport) {
             _selectedTransport.value = transport
@@ -25,7 +30,6 @@ class StepperViewModel : ViewModel() {
     }
 
     fun selectStation(stationName: String, latitude: Double, longitude: Double) {
-        // 🔑 Ensure these property names match Station.kt in your model package
         _selectedStation.value = Station(
             name = stationName,
             type = _selectedTransport.value.orEmpty(),

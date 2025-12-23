@@ -66,7 +66,7 @@ fun StepperScreen(
                         },
                         onClearStation = {
                             viewModel.clearStation()
-                            mapViewModel.cancelAlarm() // Also clears the marker from map
+                            mapViewModel.cancelAlarm(viewModel)
                         },
                         onNext = viewModel::nextStep,
                         onBack = viewModel::goBack,

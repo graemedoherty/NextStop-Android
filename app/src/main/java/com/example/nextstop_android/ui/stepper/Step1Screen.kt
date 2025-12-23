@@ -18,7 +18,7 @@ import com.example.nextstop_android.ui.components.PrimaryButton
 fun Step1Screen(
     selectedTransport: String?,
     onTransportSelected: (String) -> Unit,
-    onNext: () -> Unit // ✅ Added parameter
+    onNext: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -76,12 +76,13 @@ fun Step1Screen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        // 🔑 This spacer pushes the Next button to the bottom
+        Spacer(modifier = Modifier.weight(1f))
 
         PrimaryButton(
             text = "Next",
             enabled = selectedTransport != null,
-            onClick = onNext // ✅ Now uses the transition callback
+            onClick = onNext
         )
     }
 }

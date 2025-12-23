@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 enum class AlarmStatus {
@@ -25,10 +26,19 @@ fun AlarmCard(
     modifier: Modifier = Modifier
 ) {
     var showCancelDialog by remember { mutableStateOf(false) }
+    var cancelInProgress by remember { mutableStateOf(false) }
+
+    // 🔑 Auto-dismiss dialog if state changes (alarm reset elsewhere)
+    LaunchedEffect(status) {
+        if (status != AlarmStatus.ACTIVE) {
+            showCancelDialog = false
+            cancelInProgress = false
+        }
+    }
 
     val borderColor = when (status) {
         AlarmStatus.ACTIVE -> MaterialTheme.colorScheme.outline
-        AlarmStatus.ARRIVED -> MaterialTheme.colorScheme.error // Highlight red on arrival
+        AlarmStatus.ARRIVED -> MaterialTheme.colorScheme.error
     }
 
     Surface(
@@ -36,7 +46,7 @@ fun AlarmCard(
             .fillMaxWidth()
             .padding(16.dp)
             .border(
-                width = 2.dp, // Slightly thicker border for visibility
+                width = 2.dp,
                 color = borderColor,
                 shape = RoundedCornerShape(16.dp)
             ),
@@ -45,17 +55,13 @@ fun AlarmCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
 
-            // Header row
+            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 StatusBadge(status)
-
-                TextButton(onClick = { showCancelDialog = true }) {
-                    Text("Cancel", color = MaterialTheme.colorScheme.error)
-                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -68,7 +74,7 @@ fun AlarmCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Distance / arrived text
+            // Status content
             if (status == AlarmStatus.ACTIVE) {
                 DistanceDisplay(distanceMeters)
             } else {
@@ -76,28 +82,67 @@ fun AlarmCard(
                     text = "You have arrived at your destination!",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.error,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Stop Alarm Button (always visible)
+            Button(
+                onClick = { showCancelDialog = true },
+                enabled = !cancelInProgress,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    // 🔑 Using a high-visibility transport red
+                    containerColor = Color(0xFFD32F2F),
+                    contentColor = Color.White
+                )
+            ) {
+                Text(
+                    text = if (status == AlarmStatus.ARRIVED) "Dismiss" else "Cancel Alarm",
+                    color = Color.White
                 )
             }
         }
     }
 
+    // Cancel confirmation dialog
     if (showCancelDialog) {
         AlertDialog(
-            onDismissRequest = { showCancelDialog = false },
-            title = { Text("Cancel Alarm?") },
-            text = { Text("Are you sure you want to cancel your alarm for $destination?") },
+            onDismissRequest = {
+                if (!cancelInProgress) showCancelDialog = false
+            },
+            title = { Text("Stop Alarm?") },
+            text = {
+                Text(
+                    if (status == AlarmStatus.ARRIVED)
+                        "Dismiss the arrival notification?"
+                    else
+                        "Are you sure you want to stop your alarm for $destination?"
+                )
+            },
             confirmButton = {
-                TextButton(onClick = {
-                    showCancelDialog = false
-                    onCancel()
-                }) {
-                    Text("Yes, Cancel", color = MaterialTheme.colorScheme.error)
+                TextButton(
+                    enabled = !cancelInProgress,
+                    onClick = {
+                        cancelInProgress = true
+                        showCancelDialog = false
+                        onCancel() // 🔑 This triggers full reset via MapViewModel
+                    }
+                ) {
+                    Text(
+                        text = if (status == AlarmStatus.ARRIVED) "Dismiss" else "Yes, Stop",
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showCancelDialog = false }) {
-                    Text("Keep Alarm")
+                TextButton(
+                    enabled = !cancelInProgress,
+                    onClick = { showCancelDialog = false }
+                ) {
+                    Text("Cancel")
                 }
             }
         )
@@ -106,7 +151,6 @@ fun AlarmCard(
 
 @Composable
 private fun DistanceDisplay(distanceMeters: Int) {
-    // 🔑 Ensure that distanceMeters >= 0 is treated as valid
     val displayText = when {
         distanceMeters < 0 -> "Calculating distance..."
         distanceMeters >= 1000 -> "%.1f km away".format(distanceMeters / 1000.0)
@@ -125,7 +169,10 @@ private fun DistanceDisplay(distanceMeters: Int) {
         Text(
             text = displayText,
             style = MaterialTheme.typography.titleMedium,
-            color = if (distanceMeters < 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary
+            color = if (distanceMeters < 0)
+                MaterialTheme.colorScheme.onSurfaceVariant
+            else
+                MaterialTheme.colorScheme.primary
         )
     }
 }

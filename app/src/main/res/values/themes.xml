@@ -2,15 +2,13 @@
 <resources>
 
     <style name="Theme.NextStopAndroid" parent="Theme.AppCompat.Light.NoActionBar">
-        <!-- Status bar -->
-        <item name="android:statusBarColor">@color/primary</item>
+        <item name="android:statusBarColor">#000000</item>
         <item name="android:windowLightStatusBar">false</item>
 
-        <!-- Background -->
-        <item name="android:colorBackground">@color/background</item>
+        <item name="android:colorBackground">#000000</item>
 
-        <!-- Remove default splash/window background -->
-        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowBackground">#000000</item>
+
         <item name="android:windowIsTranslucent">false</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowContentOverlay">@null</item>
