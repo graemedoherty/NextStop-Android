@@ -54,58 +54,85 @@ fun Step2Screen(
         else stationNames.filter { it.contains(searchText, ignoreCase = true) }
     }
 
-    // Scroll state for the entire column
-    val scrollState = rememberScrollState()
-
-    Column(
+    // 🔑 We use a Box so the search results can "float" over the buttons
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 24.dp)
     ) {
-        Text(
-            text = "Step 2: Select destination station",
-            fontSize = 15.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
-
-        if (savedStation == null) {
-            OutlinedTextField(
-                value = searchText,
-                onValueChange = { searchText = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Station (min 3 letters)") },
-                shape = RoundedCornerShape(12.dp),
-                singleLine = true
+        // LAYER 1: The Main Content & Buttons
+        Column(modifier = Modifier.fillMaxSize()) {
+            Text(
+                text = "Step 2: Select destination station",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 12.dp).align(Alignment.CenterHorizontally)
             )
-        } else {
-            Spacer(modifier = Modifier.height(8.dp))
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+
+            if (savedStation == null) {
+                OutlinedTextField(
+                    value = searchText,
+                    onValueChange = { searchText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Station (min 3 letters)") },
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
+                )
+            } else {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column {
-                        Text(text = "Selected Station:", fontSize = 11.sp)
-                        Text(text = savedStation.name, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                    }
-                    TextButton(onClick = { onClearStation() }) {
-                        Text("Change", fontSize = 13.sp)
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(text = "Selected Station:", fontSize = 11.sp)
+                            Text(text = savedStation.name, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        }
+                        TextButton(onClick = { onClearStation() }) {
+                            Text("Change", fontSize = 13.sp)
+                        }
                     }
                 }
             }
+
+            // This spacer pushes the buttons to the bottom
+            Spacer(modifier = Modifier.weight(1f))
+
+            Button(
+                onClick = onNext,
+                enabled = savedStation != null,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Next", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedButton(
+                onClick = onBack,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Back")
+            }
         }
 
+        // LAYER 2: The Floating Dropdown Results
         if (filteredStations.isNotEmpty() && savedStation == null) {
-            Spacer(modifier = Modifier.height(12.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(
+                modifier = Modifier
+                    .padding(top = 110.dp) // Starts just below the TextField
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 filteredStations.take(5).forEach { stationName ->
                     Surface(
                         onClick = {
@@ -113,10 +140,12 @@ fun Step2Screen(
                             stationData?.let {
                                 keyboardController?.hide()
                                 onStationSelected(stationName, it.getLatitude(), it.getLongitude())
+                                searchText = "" // Clear search after selection
                             }
                         },
                         shape = RoundedCornerShape(10.dp),
-                        tonalElevation = 2.dp,
+                        tonalElevation = 8.dp, // Higher elevation to look like it's floating
+                        shadowElevation = 4.dp,
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -125,36 +154,5 @@ fun Step2Screen(
                 }
             }
         }
-
-        // Add extra spacer to ensure buttons are always visible
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = onNext,
-            enabled = savedStation != null,
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text("Next", fontSize = 16.sp, fontWeight = FontWeight.Medium)
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedButton(
-            onClick = onBack,
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text("Back")
-        }
     }
-}
-
-private fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Int {
-    val earthRadius = 6371000.0
-    val dLat = Math.toRadians(lat2 - lat1)
-    val dLon = Math.toRadians(lon2 - lon1)
-    val a = sin(dLat / 2) * sin(dLat / 2) + cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) * sin(dLon / 2) * sin(dLon / 2)
-    val c = 2 * atan2(sqrt(a), sqrt(1 - a))
-    return (earthRadius * c).roundToInt()
 }
