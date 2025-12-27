@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nextstop_android.service.LocationTrackingService
 import com.example.nextstop_android.ui.maps.MapViewModel
@@ -28,7 +29,11 @@ fun StepperScreen(
     val selectedTransport by viewModel.selectedTransport.collectAsState()
     val selectedStation by viewModel.selectedStation.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = 16.dp) // Added top padding
+    ) {
         StepIndicators(currentStep)
 
         Box(modifier = Modifier.weight(1f)) {
@@ -46,7 +51,6 @@ fun StepperScreen(
                         onNext = viewModel::nextStep
                     )
 
-// Inside StepperScreen.kt -> Step 2
                     2 -> Step2Screen(
                         selectedTransport = selectedTransport ?: "",
                         savedStation = selectedStation,
@@ -54,7 +58,7 @@ fun StepperScreen(
                             // 1. Update the Stepper state (for the UI/Next button)
                             viewModel.selectStation(name, lat, lng)
 
-                            // 2. 🔑 NEW/FIX: Update the Map state immediately to show the marker
+                            // 2. 🔑 Update the Map state immediately to show the marker
                             val stationObj = Station(
                                 name = name,
                                 type = selectedTransport ?: "",
@@ -76,12 +80,11 @@ fun StepperScreen(
                     3 -> Step3Screen(
                         selectedTransport = selectedTransport ?: "",
                         selectedStation = selectedStation?.name ?: "",
-// Inside StepperScreen Step 3 onAlarmSet
                         onAlarmSet = {
                             selectedStation?.let { station ->
                                 onAlarmCreated(station)
 
-                                // 🔑 THIS IS CRITICAL: Update the service with the new destination
+                                // 🔑 Start the tracking service with destination
                                 val serviceIntent = Intent(context, LocationTrackingService::class.java).apply {
                                     action = LocationTrackingService.ACTION_SET_DESTINATION
                                     putExtra(LocationTrackingService.EXTRA_DESTINATION_LAT, station.latitude)
