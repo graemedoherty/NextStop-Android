@@ -42,21 +42,21 @@
     "featureType": "road.highway",
     "elementType": "geometry.fill",
     "stylers": [
-      { "color": "#6f66e4" }
+      { "color": "#2B2B2B" }
     ]
   },
   {
     "featureType": "road.highway",
     "elementType": "geometry.stroke",
     "stylers": [
-      { "color": "#4a3fb8" }
+      { "color": "#2B2B2B" }
     ]
   },
   {
     "featureType": "road.arterial",
     "elementType": "geometry.fill",
     "stylers": [
-      { "color": "#6f66e4" },
+      { "color": "#2B2B2B" },
       { "lightness": 18 }
     ]
   },
@@ -64,7 +64,7 @@
     "featureType": "road.local",
     "elementType": "geometry",
     "stylers": [
-      { "color": "#6f66e4" },
+      { "color": "#2B2B2B" },
       { "lightness": 16 }
     ]
   },

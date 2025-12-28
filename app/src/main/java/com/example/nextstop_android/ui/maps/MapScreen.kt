@@ -179,7 +179,8 @@ fun MapsScreen(
             destinationLatLng?.let {
                 Marker(
                     state = rememberMarkerState(position = it),
-                    title = uiState.selectedStation?.name ?: "Destination"
+                    title = uiState.selectedStation?.name ?: "Destination",
+                    icon = BitmapDescriptorFactory.defaultMarker(270f) // Purple marker (#6f66e3)
                 )
             }
         }
@@ -207,7 +208,7 @@ fun PermissionStepCard(
             if (currentStep > 0) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     repeat(3) { index ->
-                        val color = if (index + 1 <= currentStep) Color(0xFF6F66E4) else Color.DarkGray
+                        val color = if (index + 1 <= currentStep) Color(0xFF6F66E3) else Color.DarkGray
                         Box(modifier = Modifier.size(width = 32.dp, height = 4.dp).background(color, RoundedCornerShape(2.dp)))
                     }
                 }
@@ -231,7 +232,7 @@ fun PermissionStepCard(
             Button(
                 onClick = onAction,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6F66E4)),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6F66E3)),
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Text(buttonText, style = MaterialTheme.typography.titleMedium, color = Color.White)
