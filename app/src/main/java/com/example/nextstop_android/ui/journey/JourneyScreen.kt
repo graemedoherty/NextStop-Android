@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.nextstop_android.ui.ads.AdBanner
 import com.example.nextstop_android.ui.maps.MapViewModel
 import com.example.nextstop_android.ui.maps.MapsScreen
 import com.example.nextstop_android.ui.stepper.StepperScreen
@@ -25,6 +26,9 @@ fun JourneyScreen() {
 
     // Root is a Column. Inside here, the "Receiver" is ColumnScope.
     Column(modifier = Modifier.fillMaxSize()) {
+
+        // 🎯 AD BANNER AT THE TOP (New!)
+        AdBanner(modifier = Modifier.fillMaxWidth())
 
         // 1. This AnimatedVisibility is a direct child of Column.
         // It handles the "Slide Up" exit.
@@ -83,7 +87,6 @@ fun JourneyScreen() {
                     AlarmStatus.ACTIVE
                 }
 
-                // Inside JourneyScreen.kt
                 AlarmCard(
                     destination = mapUiState.selectedStation?.name ?: "Destination",
                     distanceMeters = mapUiState.distanceToDestination,

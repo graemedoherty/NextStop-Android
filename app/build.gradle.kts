@@ -57,6 +57,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation("com.google.accompanist:accompanist-permissions:0.32.0")
+    // Google AdMob
+    implementation("com.google.android.gms:play-services-ads:22.6.0")
 
     // --- Compose ---
     implementation(platform(libs.androidx.compose.bom))
