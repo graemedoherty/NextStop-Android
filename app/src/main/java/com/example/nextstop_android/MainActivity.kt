@@ -18,6 +18,7 @@ import com.example.nextstop_android.ui.journey.JourneyScreen
 import com.example.nextstop_android.ui.maps.MapViewModel
 import com.example.nextstop_android.ui.theme.NextStopAndroidTheme
 import com.example.nextstop_android.viewmodel.StepperViewModel
+import com.google.android.gms.ads.MobileAds
 
 class MainActivity : ComponentActivity() {
 
@@ -34,6 +35,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Initialize AdMob
+        MobileAds.initialize(this) {}
 
         // 🔑 FIX: Use ContextCompat to support API 24+
         val filter = IntentFilter(LocationTrackingService.ACTION_ALARM_STOPPED)
