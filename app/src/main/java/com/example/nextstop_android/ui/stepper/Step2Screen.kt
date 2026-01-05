@@ -1,6 +1,5 @@
 package com.example.nextstop_android.ui.stepper
 
-import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -18,8 +17,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.nextstop_android.data.StationDataLoader
 import com.example.nextstop_android.ui.maps.MapViewModel
+import com.example.nextstop_android.ui.stations.StationViewModel
 import com.example.nextstop_android.model.Station
-import kotlin.math.*
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
@@ -30,7 +29,8 @@ fun Step2Screen(
     onClearStation: () -> Unit,
     onNext: () -> Unit,
     onBack: () -> Unit,
-    mapViewModel: MapViewModel
+    mapViewModel: MapViewModel,
+    stationViewModel: StationViewModel  // ADD THIS PARAMETER
 ) {
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -47,20 +47,18 @@ fun Step2Screen(
         }
     }
 
-    val stationNames = stationDataList.map { it.getName() }
+    val stationNames = stationDataList.map { it.name }
     var searchText by remember { mutableStateOf("") }
     val filteredStations = remember(searchText, selectedTransport) {
         if (searchText.length < 3) emptyList()
         else stationNames.filter { it.contains(searchText, ignoreCase = true) }
     }
 
-    // 🔑 We use a Box so the search results can "float" over the buttons
     Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 24.dp)
     ) {
-        // LAYER 1: The Main Content & Buttons
         Column(modifier = Modifier.fillMaxSize()) {
             Text(
                 text = "Step 2: Select destination station",
@@ -101,11 +99,20 @@ fun Step2Screen(
                 }
             }
 
-            // This spacer pushes the buttons to the bottom
             Spacer(modifier = Modifier.weight(1f))
 
             Button(
-                onClick = onNext,
+                onClick = {
+                    onNext()
+                    // Force map to update nearby bus stations immediately
+                    if (selectedTransport == "Bus" && userLocation != null) {
+                        val bounds = com.google.android.gms.maps.model.LatLngBounds.builder()
+                            .include(com.google.android.gms.maps.model.LatLng(userLocation.first - 0.01, userLocation.second - 0.01))
+                            .include(com.google.android.gms.maps.model.LatLng(userLocation.first + 0.01, userLocation.second + 0.01))
+                            .build()
+                        stationViewModel.updateVisibleBounds(bounds)  // FIXED: Now calls stationViewModel
+                    }
+                },
                 enabled = savedStation != null,
                 modifier = Modifier.fillMaxWidth().height(48.dp),
                 shape = RoundedCornerShape(12.dp)
@@ -124,11 +131,10 @@ fun Step2Screen(
             }
         }
 
-        // LAYER 2: The Floating Dropdown Results
         if (filteredStations.isNotEmpty() && savedStation == null) {
             Column(
                 modifier = Modifier
-                    .padding(top = 110.dp) // Starts just below the TextField
+                    .padding(top = 110.dp)
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -136,15 +142,15 @@ fun Step2Screen(
                 filteredStations.take(5).forEach { stationName ->
                     Surface(
                         onClick = {
-                            val stationData = stationDataList.find { it.getName() == stationName }
+                            val stationData = stationDataList.find { it.name == stationName }
                             stationData?.let {
                                 keyboardController?.hide()
-                                onStationSelected(stationName, it.getLatitude(), it.getLongitude())
-                                searchText = "" // Clear search after selection
+                                onStationSelected(stationName, it.lat, it.long)
+                                searchText = ""
                             }
                         },
                         shape = RoundedCornerShape(10.dp),
-                        tonalElevation = 8.dp, // Higher elevation to look like it's floating
+                        tonalElevation = 8.dp,
                         shadowElevation = 4.dp,
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                         modifier = Modifier.fillMaxWidth()

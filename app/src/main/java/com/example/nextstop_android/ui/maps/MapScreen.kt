@@ -1,242 +1,376 @@
 package com.example.nextstop_android.ui.maps
 
 import android.Manifest
-import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
+import android.graphics.*
 import android.os.Build
 import android.os.Looper
 import android.provider.Settings
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nextstop_android.R
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import com.google.accompanist.permissions.rememberPermissionState
-import com.google.accompanist.permissions.isGranted
+import com.example.nextstop_android.ui.stepper.PermissionStepCard
+import com.example.nextstop_android.ui.stations.StationViewModel
+import com.example.nextstop_android.viewmodel.StationViewModelFactory
+import com.example.nextstop_android.viewmodel.StepperViewModel
+import com.google.accompanist.permissions.*
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.*
 import com.google.maps.android.compose.*
+import kotlinx.coroutines.delay
+
+/* ---------- HELPERS ---------- */
+
+fun provideStationIcon(context: android.content.Context): BitmapDescriptor {
+    val bitmap = BitmapFactory.decodeResource(context.resources, R.drawable.pin)
+    val aspectRatio = bitmap.height.toFloat() / bitmap.width.toFloat()
+    val width = 100
+    val height = (width * aspectRatio).toInt()
+    return BitmapDescriptorFactory.fromBitmap(
+        Bitmap.createScaledBitmap(bitmap, width, height, true)
+    )
+}
+
+// ✅ CREATE PURPLE DESTINATION MARKER
+fun providePurpleDestinationIcon(context: android.content.Context): BitmapDescriptor {
+    val originalBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.pin)
+    val aspectRatio = originalBitmap.height.toFloat() / originalBitmap.width.toFloat()
+    val width = 120 // Slightly larger for destination
+    val height = (width * aspectRatio).toInt()
+
+    val scaledBitmap = Bitmap.createScaledBitmap(originalBitmap, width, height, true)
+
+    // Apply purple tint
+    val purpleBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(purpleBitmap)
+    val paint = Paint().apply {
+        colorFilter = PorterDuffColorFilter(0xFF6F66E3.toInt(), PorterDuff.Mode.SRC_ATOP)
+    }
+    canvas.drawBitmap(scaledBitmap, 0f, 0f, paint)
+
+    return BitmapDescriptorFactory.fromBitmap(purpleBitmap)
+}
+
+private fun createInfoWindowBitmap(
+    title: String,
+    isAlarmArmed: Boolean,
+    isDarkTheme: Boolean
+): Bitmap {
+    val width = 700
+    val height = if (isAlarmArmed) 280 else 340
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+
+    val backgroundColor =
+        if (isDarkTheme) 0xFF1A1A1A.toInt() else 0xFFFFFFFF.toInt()
+
+    val titleColor =
+        if (isDarkTheme) android.graphics.Color.WHITE else android.graphics.Color.BLACK
+
+    val subtitleColor =
+        if (isAlarmArmed) {
+            0xFF4CAF50.toInt()
+        } else {
+            if (isDarkTheme) 0xFF8F87EB.toInt() else 0xFF5C54C7.toInt()
+        }
+
+    val cornerRadius = 40f
+
+    // Background
+    val bgPaint = Paint().apply {
+        color = backgroundColor
+        isAntiAlias = true
+    }
+    val bgRect = RectF(0f, 0f, width.toFloat(), height.toFloat())
+    canvas.drawRoundRect(bgRect, cornerRadius, cornerRadius, bgPaint)
+
+    // ✅ PURPLE BORDER
+    val borderPaint = Paint().apply {
+        color = 0xFF6F66E3.toInt()
+        isAntiAlias = true
+        style = Paint.Style.STROKE
+        strokeWidth = 8f
+    }
+    canvas.drawRoundRect(bgRect, cornerRadius, cornerRadius, borderPaint)
+
+    // Title
+    val titlePaint = Paint().apply {
+        color = titleColor
+        textSize = 48f
+        isAntiAlias = true
+        typeface = Typeface.DEFAULT_BOLD
+    }
+    canvas.drawText(title, 40f, 100f, titlePaint)
+
+    // Subtitle
+    val subtitlePaint = Paint().apply {
+        color = subtitleColor
+        textSize = 40f
+        isAntiAlias = true
+    }
+    canvas.drawText(
+        if (isAlarmArmed) "Alarm Active" else "Tap to Select",
+        40f,
+        180f,
+        subtitlePaint
+    )
+
+    return bitmap
+}
+
+
+@Composable
+fun CustomMarker(
+    position: LatLng,
+    title: String,
+    isAlarmArmed: Boolean,
+    isDarkTheme: Boolean,
+    icon: BitmapDescriptor?,
+    onSelect: () -> Unit
+) {
+    MarkerInfoWindow(
+        state = rememberMarkerState(position = position),
+        icon = icon,
+        onInfoWindowClick = { if (!isAlarmArmed) onSelect() }
+    ) {
+        Image(
+            bitmap = remember(title, isAlarmArmed, isDarkTheme) {
+                createInfoWindowBitmap(title, isAlarmArmed, isDarkTheme)
+            }.asImageBitmap(),
+            contentDescription = null,
+            modifier = Modifier.width(300.dp)
+        )
+    }
+}
+
+
+/* ---------- MAP SCREEN ---------- */
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun MapsScreen(
     modifier: Modifier = Modifier,
-    viewModel: MapViewModel = viewModel()
+    mapViewModel: MapViewModel,
+    stepperViewModel: StepperViewModel
 ) {
     val context = LocalContext.current
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by mapViewModel.uiState.collectAsState()
 
-    // 🔑 Tracks which setup card to show
-    // 0: Welcome, 1: Location, 2: Notifications, 3: Overlay, 4: Finish
-    var onboardingStep by remember { mutableStateOf(0) }
+    val stationViewModel: StationViewModel =
+        viewModel(factory = StationViewModelFactory(context))
 
-    /* ---------------- 1. PERMISSION STATES ---------------- */
+    val selectedTransport by stepperViewModel.selectedTransport.collectAsState()
+    val transportConfirmed by stepperViewModel.transportConfirmed.collectAsState()
 
-    val locationState = rememberMultiplePermissionsState(
-        listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+    /* ---------- LOCATION UPDATES ---------- */
+
+    val fusedLocationClient = remember {
+        LocationServices.getFusedLocationProviderClient(context)
+    }
+
+    DisposableEffect(Unit) {
+        val request = LocationRequest.Builder(
+            Priority.PRIORITY_HIGH_ACCURACY,
+            4000L
+        ).build()
+
+        val callback = object : LocationCallback() {
+            override fun onLocationResult(result: LocationResult) {
+                result.lastLocation?.let {
+                    mapViewModel.updateUserLocation(it.latitude, it.longitude)
+                }
+            }
+        }
+
+        if (
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            fusedLocationClient.requestLocationUpdates(
+                request,
+                callback,
+                Looper.getMainLooper()
+            )
+        }
+
+        onDispose { fusedLocationClient.removeLocationUpdates(callback) }
+    }
+
+    /* ---------- STATIONS ---------- */
+
+    LaunchedEffect(selectedTransport, transportConfirmed) {
+        if (transportConfirmed && selectedTransport != null) {
+            stationViewModel.loadStations(selectedTransport!!)
+        }
+    }
+
+    val visibleStations by stationViewModel.visibleStations.collectAsState()
+    LaunchedEffect(visibleStations) {
+        mapViewModel.setStations(visibleStations)
+    }
+
+    /* ---------- PERMISSIONS ---------- */
+
+    val locationPermissions = rememberMultiplePermissionsState(
+        listOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        )
     )
 
-    val notificationState = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        rememberPermissionState(Manifest.permission.POST_NOTIFICATIONS)
-    } else null
+    val notificationPermission =
+        if (Build.VERSION.SDK_INT >= 33)
+            rememberPermissionState(Manifest.permission.POST_NOTIFICATIONS)
+        else null
 
-    // Check if everything is already granted to bypass onboarding for returning users
-    val isFullyConfigured = locationState.allPermissionsGranted &&
-            (notificationState?.status?.isGranted ?: true) &&
-            Settings.canDrawOverlays(context)
+    val fullyConfigured =
+        locationPermissions.allPermissionsGranted &&
+                (notificationPermission?.status?.isGranted ?: true) &&
+                Settings.canDrawOverlays(context)
 
-    /* ---------------- 2. SEQUENTIAL ONBOARDING UI ---------------- */
-
-    if (!isFullyConfigured && onboardingStep < 4) {
+    if (!fullyConfigured) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black), // Matches your OLED black theme
+                .background(Color.Black),
             contentAlignment = Alignment.Center
         ) {
-            when (onboardingStep) {
-                0 -> PermissionStepCard(
-                    title = "Welcome to NextStop",
-                    description = "Let's get you ready for your journey. We need a few permissions to make sure you never miss your stop again!",
-                    buttonText = "Start Setup",
-                    currentStep = 0,
-                    onAction = { onboardingStep = 1 }
-                )
-                1 -> PermissionStepCard(
-                    title = "📍 Location",
-                    description = "We use your GPS to track your journey in real-time and trigger the alarm precisely as you approach your station.",
-                    buttonText = "Enable Location",
-                    currentStep = 1,
-                    onAction = {
-                        locationState.launchMultiplePermissionRequest()
-                        onboardingStep = 2
-                    }
-                )
-                2 -> PermissionStepCard(
-                    title = "🔔 Notifications",
-                    description = "This allows us to keep the tracking service active in the background while you relax or use other apps.",
-                    buttonText = "Enable Notifications",
-                    currentStep = 2,
-                    onAction = {
-                        notificationState?.launchPermissionRequest()
-                        onboardingStep = 3
-                    }
-                )
-                3 -> PermissionStepCard(
-                    title = "✨ Wake Screen",
-                    description = "To make sure you wake up on time, the app needs permission to wake your screen even if it's locked.",
-                    buttonText = "Grant Permission",
-                    currentStep = 3,
-                    onAction = {
-                        val intent = Intent(
-                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            Uri.parse("package:${context.packageName}")
-                        )
-                        context.startActivity(intent)
-                        onboardingStep = 4
-                    }
-                )
+            PermissionStepCard(
+                title = "Permissions Required",
+                description = "Enable location and notifications.",
+                buttonText = "Continue"
+            ) {
+                locationPermissions.launchMultiplePermissionRequest()
             }
         }
-    } else {
-        /* ---------------- 3. THE MAP CONTENT ---------------- */
+        return
+    }
 
-        // Map Style & Properties
-        val isDarkTheme = isSystemInDarkTheme()
-        val mapProperties = remember(isDarkTheme) {
-            MapProperties(
-                isMyLocationEnabled = true,
-                mapStyleOptions = try {
-                    MapStyleOptions.loadRawResourceStyle(
-                        context,
-                        if (isDarkTheme) R.raw.map_dark_style else R.raw.map_light_style
-                    )
-                } catch (e: Exception) { null }
+    /* ---------- CAMERA & THEME LOGIC ---------- */
+
+    val cameraPositionState = rememberCameraPositionState()
+
+    val userLatLng = uiState.userLocation?.let { LatLng(it.first, it.second) }
+    val destinationLatLng =
+        uiState.destinationLocation?.let { LatLng(it.first, it.second) }
+
+    val shouldFollowUser =
+        userLatLng != null &&
+                destinationLatLng == null &&
+                !uiState.alarmArmed
+
+    // Follow user ONLY when appropriate
+    LaunchedEffect(userLatLng, shouldFollowUser) {
+        if (userLatLng != null && shouldFollowUser) {
+            cameraPositionState.animate(
+                CameraUpdateFactory.newLatLngZoom(userLatLng, 14f),
+                800
             )
         }
+    }
 
-        // Location Update Logic
-        val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
-        DisposableEffect(locationState.allPermissionsGranted) {
-            if (!locationState.allPermissionsGranted) return@DisposableEffect onDispose { }
-
-            val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 2000L)
-                .setMinUpdateIntervalMillis(1000L)
+    // Frame route when destination selected
+    LaunchedEffect(userLatLng, destinationLatLng) {
+        if (userLatLng != null && destinationLatLng != null) {
+            val bounds = LatLngBounds.builder()
+                .include(userLatLng)
+                .include(destinationLatLng)
                 .build()
 
-            val callback = object : LocationCallback() {
-                override fun onLocationResult(result: LocationResult) {
-                    result.lastLocation?.let { viewModel.updateUserLocation(it.latitude, it.longitude) }
-                }
-            }
-
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                fusedLocationClient.requestLocationUpdates(request, callback, Looper.getMainLooper())
-            }
-            onDispose { fusedLocationClient.removeLocationUpdates(callback) }
+            cameraPositionState.animate(
+                CameraUpdateFactory.newLatLngBounds(bounds, 200),
+                700
+            )
         }
+    }
 
-        // Camera Logic
-        val userLatLng = uiState.userLocation?.let { LatLng(it.first, it.second) }
-        val destinationLatLng = uiState.destinationLocation?.let { LatLng(it.first, it.second) }
-        val cameraPositionState = rememberCameraPositionState {
-            position = CameraPosition.fromLatLngZoom(LatLng(53.3498, -6.2603), 6f)
-        }
-
-        LaunchedEffect(userLatLng, destinationLatLng) {
-            when {
-                userLatLng != null && destinationLatLng != null -> {
-                    val bounds = LatLngBounds.builder().include(userLatLng).include(destinationLatLng).build()
-                    cameraPositionState.animate(CameraUpdateFactory.newLatLngBounds(bounds, 200), 700)
-                }
-                userLatLng != null -> {
-                    cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(userLatLng, 15f), 700)
-                }
-            }
-        }
-
-        GoogleMap(
-            modifier = modifier.fillMaxSize(),
-            cameraPositionState = cameraPositionState,
-            properties = mapProperties,
-            uiSettings = MapUiSettings(zoomControlsEnabled = false, myLocationButtonEnabled = true)
-        ) {
-            destinationLatLng?.let {
-                Marker(
-                    state = rememberMarkerState(position = it),
-                    title = uiState.selectedStation?.name ?: "Destination",
-                    icon = BitmapDescriptorFactory.defaultMarker(270f) // Purple marker (#6f66e3)
-                )
+    // Refresh stations on pan
+    LaunchedEffect(cameraPositionState.isMoving) {
+        if (!cameraPositionState.isMoving && transportConfirmed) {
+            delay(150)
+            cameraPositionState.projection?.visibleRegion?.latLngBounds?.let {
+                stationViewModel.updateVisibleBounds(it)
             }
         }
     }
-}
 
-@Composable
-fun PermissionStepCard(
-    title: String,
-    description: String,
-    buttonText: String,
-    currentStep: Int,
-    onAction: () -> Unit
-) {
-    Card(
-        modifier = Modifier.padding(24.dp).fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A)), // Dark Grey/Charcoal
-        shape = RoundedCornerShape(28.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Progress Indicator
-            if (currentStep > 0) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    repeat(3) { index ->
-                        val color = if (index + 1 <= currentStep) Color(0xFF6F66E3) else Color.DarkGray
-                        Box(modifier = Modifier.size(width = 32.dp, height = 4.dp).background(color, RoundedCornerShape(2.dp)))
+    /* ---------- MAP THEME (LIVE SWITCHING) ---------- */
+
+    val isDarkTheme = isSystemInDarkTheme()
+
+    val mapProperties = remember(isDarkTheme) {
+        MapProperties(
+            isMyLocationEnabled = true,
+            mapStyleOptions = runCatching {
+                MapStyleOptions.loadRawResourceStyle(
+                    context,
+                    if (isDarkTheme) {
+                        R.raw.map_dark_style
+                    } else {
+                        R.raw.map_light_style
                     }
-                }
-                Spacer(modifier = Modifier.height(32.dp))
-            }
+                )
+            }.getOrNull()
+        )
+    }
 
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                color = Color.White,
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = description,
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.LightGray
-            )
-            Spacer(modifier = Modifier.height(40.dp))
-            Button(
-                onClick = onAction,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6F66E3)),
-                shape = RoundedCornerShape(16.dp)
+    /* ---------- MAP ---------- */
+
+    var sharedPinIcon by remember { mutableStateOf<BitmapDescriptor?>(null) }
+    var purpleDestinationIcon by remember { mutableStateOf<BitmapDescriptor?>(null) }
+
+    GoogleMap(
+        modifier = modifier.fillMaxSize(),
+        cameraPositionState = cameraPositionState,
+        properties = mapProperties,
+        uiSettings = MapUiSettings(
+            myLocationButtonEnabled = true,
+            zoomControlsEnabled = false
+        ),
+        onMapLoaded = {
+            sharedPinIcon = provideStationIcon(context)
+            purpleDestinationIcon = providePurpleDestinationIcon(context)
+        }
+    ) {
+        uiState.stations.forEach { station ->
+            CustomMarker(
+                position = LatLng(station.latitude, station.longitude),
+                title = station.name,
+                isAlarmArmed = uiState.alarmArmed,
+                isDarkTheme = isDarkTheme,
+                icon = sharedPinIcon
             ) {
-                Text(buttonText, style = MaterialTheme.typography.titleMedium, color = Color.White)
+                mapViewModel.setDestination(station)
+                stepperViewModel.selectStation(
+                    station.name,
+                    station.latitude,
+                    station.longitude
+                )
             }
+        }
+
+        // ✅ PURPLE DESTINATION MARKER
+        destinationLatLng?.let {
+            Marker(
+                state = MarkerState(it),
+                title = uiState.selectedStation?.name ?: "Destination",
+                icon = purpleDestinationIcon
+            )
         }
     }
 }

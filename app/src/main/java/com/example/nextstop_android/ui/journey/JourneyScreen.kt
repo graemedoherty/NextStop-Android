@@ -13,34 +13,34 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nextstop_android.ui.ads.AdBanner
 import com.example.nextstop_android.ui.maps.MapViewModel
 import com.example.nextstop_android.ui.maps.MapsScreen
-import com.example.nextstop_android.ui.stepper.StepperScreen
-import com.example.nextstop_android.viewmodel.StepperViewModel
 import com.example.nextstop_android.ui.maps.AlarmCard
 import com.example.nextstop_android.ui.maps.AlarmStatus
+import com.example.nextstop_android.ui.stepper.StepperScreen
+import com.example.nextstop_android.viewmodel.StepperViewModel
 
 @Composable
 fun JourneyScreen() {
+
+    // 🔑 SINGLE source of truth for ViewModels
     val mapViewModel: MapViewModel = viewModel()
     val stepperViewModel: StepperViewModel = viewModel()
+
     val mapUiState by mapViewModel.uiState.collectAsState()
 
-    // Root is a Column. Inside here, the "Receiver" is ColumnScope.
     Column(modifier = Modifier.fillMaxSize()) {
 
-        // 🎯 AD BANNER AT THE TOP (New!)
+        // 🎯 Ad banner
         AdBanner(modifier = Modifier.fillMaxWidth())
 
-        // 1. This AnimatedVisibility is a direct child of Column.
-        // It handles the "Slide Up" exit.
+        // ───────────────── STEP PER ─────────────────
         AnimatedVisibility(
             visible = !mapUiState.alarmArmed,
             enter = expandVertically(),
             exit = slideOutVertically(
-                targetOffsetY = { -it }, // Slides out towards the top
+                targetOffsetY = { -it },
                 animationSpec = tween(1000)
             ) + shrinkVertically(animationSpec = tween(1000))
         ) {
-            // Content inside the stepper area
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -57,42 +57,41 @@ fun JourneyScreen() {
             }
         }
 
-        // 2. This Box takes the remaining space.
-        // When the Stepper disappears, weight(1f) expands this to 100%.
+        // ───────────────── MAP + ALARM ─────────────────
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
         ) {
-            // LAYER 1: The Map
+
+            // 🗺 MAP
             MapsScreen(
                 modifier = Modifier.fillMaxSize(),
-                viewModel = mapViewModel
+                mapViewModel = mapViewModel,
+                stepperViewModel = stepperViewModel
             )
 
-            // LAYER 2: The Alarm Card
-            // We use the standard AnimatedVisibility here and align it via Modifier.
+            // 🚨 Alarm card
             androidx.compose.animation.AnimatedVisibility(
                 visible = mapUiState.alarmArmed,
                 enter = slideInVertically(
-                    initialOffsetY = { it }, // Slides in from the bottom
+                    initialOffsetY = { it },
                     animationSpec = tween(1000)
                 ) + fadeIn(animationSpec = tween(1000)),
                 exit = fadeOut(),
-                modifier = Modifier.align(Alignment.BottomCenter) // 🔑 Scope fixed
+                modifier = Modifier.align(Alignment.BottomCenter)
             ) {
-                val currentStatus = if (mapUiState.distanceToDestination in 0..100) {
-                    AlarmStatus.ARRIVED
-                } else {
-                    AlarmStatus.ACTIVE
-                }
+                val status =
+                    if (mapUiState.distanceToDestination in 0..100)
+                        AlarmStatus.ARRIVED
+                    else
+                        AlarmStatus.ACTIVE
 
                 AlarmCard(
                     destination = mapUiState.selectedStation?.name ?: "Destination",
                     distanceMeters = mapUiState.distanceToDestination,
-                    status = currentStatus,
+                    status = status,
                     onCancel = {
-                        // 🔑 Pass the stepperViewModel here so it can be reset
                         mapViewModel.cancelAlarm(stepperViewModel)
                     },
                     modifier = Modifier.padding(bottom = 16.dp)

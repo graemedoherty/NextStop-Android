@@ -14,6 +14,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nextstop_android.service.LocationTrackingService
 import com.example.nextstop_android.ui.maps.MapViewModel
+import com.example.nextstop_android.ui.stations.StationViewModel
+import com.example.nextstop_android.viewmodel.StationViewModelFactory
 import com.example.nextstop_android.model.Station
 import com.example.nextstop_android.viewmodel.StepperViewModel
 
@@ -29,10 +31,15 @@ fun StepperScreen(
     val selectedTransport by viewModel.selectedTransport.collectAsState()
     val selectedStation by viewModel.selectedStation.collectAsState()
 
+    // ✅ CREATE STATIONVIEWMODEL HERE
+    val stationViewModel: StationViewModel = viewModel(
+        factory = StationViewModelFactory(context)
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 16.dp) // Added top padding
+            .padding(top = 16.dp)
     ) {
         StepIndicators(currentStep)
 
@@ -74,7 +81,8 @@ fun StepperScreen(
                         },
                         onNext = viewModel::nextStep,
                         onBack = viewModel::goBack,
-                        mapViewModel = mapViewModel
+                        mapViewModel = mapViewModel,
+                        stationViewModel = stationViewModel  // ✅ PASS IT HERE
                     )
 
                     3 -> Step3Screen(
