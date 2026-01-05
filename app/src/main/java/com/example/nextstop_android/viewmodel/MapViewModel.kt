@@ -37,10 +37,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * 🛑 Receiver fired when alarm is stopped from:
-     * - Notification
-     * - AlarmActivity
-     * - Service stop
+     * 🛑 Receiver fired when alarm is stopped from anywhere
      */
     private val alarmStoppedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -66,6 +63,38 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
+    /* -----------------------------------------------------------------------
+     * Station / Map state
+     * --------------------------------------------------------------------- */
+
+    /**
+     * 📍 Stations currently visible / relevant to the map
+     */
+    fun setStations(stations: List<Station>) {
+        _uiState.update {
+            it.copy(
+                stations = stations,
+                isLoading = false,
+                error = null
+            )
+        }
+    }
+
+    fun setLoading(isLoading: Boolean) {
+        _uiState.update {
+            it.copy(isLoading = isLoading)
+        }
+    }
+
+    fun setError(message: String?) {
+        _uiState.update {
+            it.copy(
+                error = message,
+                isLoading = false
+            )
+        }
+    }
+
     /**
      * 📍 User selects destination
      */
@@ -74,10 +103,15 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             it.copy(
                 selectedStation = station,
                 destinationLocation = station.latitude to station.longitude,
-                distanceToDestination = -1
+                distanceToDestination = -1,
+                stations = emptyList()  // ✅ CLEAR ALL STATION MARKERS
             )
         }
     }
+
+    /* -----------------------------------------------------------------------
+     * Alarm lifecycle
+     * --------------------------------------------------------------------- */
 
     /**
      * 🚨 Alarm armed (Journey started)
@@ -90,33 +124,19 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
                 alarmArmed = true,
                 alarmActive = true,
                 alarmArrived = false,
-                distanceToDestination = -1
+                distanceToDestination = -1,
+                stations = emptyList()  // ✅ CLEAR ALL STATION MARKERS
             )
         }
     }
 
+    /**
+     * 📍 Passive location update (map tracking only)
+     */
     fun updateUserLocation(latitude: Double, longitude: Double) {
         _uiState.update {
             it.copy(userLocation = latitude to longitude)
         }
-    }
-
-
-    /**
-     * ❌ User cancels alarm manually from UI
-     */
-    fun cancelAlarm(stepperViewModel: StepperViewModel? = null) {
-        // Stop service
-        val stopIntent = Intent(appContext, LocationTrackingService::class.java).apply {
-            action = LocationTrackingService.ACTION_STOP
-        }
-        appContext.startService(stopIntent)
-
-        // Reset local state
-        resetAllState()
-
-        // Reset stepper to Step 1
-        stepperViewModel?.reset()
     }
 
     /**
@@ -132,6 +152,19 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
                 alarmArrived = arrived
             )
         }
+    }
+
+    /**
+     * ❌ User cancels alarm manually
+     */
+    fun cancelAlarm(stepperViewModel: StepperViewModel? = null) {
+        val stopIntent = Intent(appContext, LocationTrackingService::class.java).apply {
+            action = LocationTrackingService.ACTION_STOP
+        }
+        appContext.startService(stopIntent)
+
+        resetAllState()
+        stepperViewModel?.reset()
     }
 
     /**

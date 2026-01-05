@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsKotlinAndroid)
-    id("org.jetbrains.kotlin.plugin.compose") version "2.0.0"  // Add directly
+    id("org.jetbrains.kotlin.plugin.compose") version "2.0.0"
 }
 
 android {
@@ -52,51 +52,51 @@ android {
 }
 
 dependencies {
-    // --- Core ---
+    // --- Core Implementation ---
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation("com.google.accompanist:accompanist-permissions:0.32.0")
-    // Google AdMob
     implementation("com.google.android.gms:play-services-ads:22.6.0")
 
-    // --- Compose ---
+    // --- Compose & UI ---
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation("androidx.compose.material:material-icons-extended")
-    // --- Navigation ---
     implementation("androidx.navigation:navigation-compose:2.8.0")
-
-    // --- Location Services ---
-    implementation("com.google.android.gms:play-services-location:21.0.1")
-
-    // --- ViewModel ---
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
-
-    // --- Lottie ---
     implementation("com.airbnb.android:lottie-compose:6.1.0")
 
-    // --- Maps ---
-    implementation("com.google.maps.android:maps-compose:4.3.1")
+    // --- Services & Architecture ---
+    implementation("com.google.android.gms:play-services-location:21.0.1")
     implementation("com.google.android.gms:play-services-maps:18.2.0")
-
-    // --- Coroutines ---
+    implementation("com.google.maps.android:maps-compose:4.3.1")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
-
-    // --- Utilities ---
     implementation("com.google.code.gson:gson:2.10.1")
 
-    // --- Testing ---
+    // --- Testing (CLEANED & FIXED) ---
     testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.ui.test.junit4)
 
+    // Android Test Core - Essential for ActivityInvoker
+    val androidTestVersion = "1.6.1"
+    androidTestImplementation("androidx.test:core-ktx:$androidTestVersion")
+    androidTestImplementation("androidx.test:runner:$androidTestVersion")
+    androidTestImplementation("androidx.test:rules:$androidTestVersion")
+
+    // UI Testing Tools
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
+
+    // Compose Testing - Using BOM for version alignment
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+
+    // Tooling
     debugImplementation(libs.androidx.ui.tooling)
-    debugImplementation(libs.androidx.ui.test.manifest)
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
