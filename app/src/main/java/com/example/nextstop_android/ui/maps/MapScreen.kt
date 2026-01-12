@@ -3,7 +3,14 @@ package com.example.nextstop_android.ui.maps
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.*
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
+import android.graphics.RectF
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
 import android.os.Looper
@@ -11,9 +18,19 @@ import android.provider.Settings
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -22,19 +39,38 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.*
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nextstop_android.R
-import com.example.nextstop_android.ui.stepper.PermissionStepCard
 import com.example.nextstop_android.ui.stations.StationViewModel
+import com.example.nextstop_android.ui.stepper.PermissionStepCard
 import com.example.nextstop_android.viewmodel.StationViewModelFactory
 import com.example.nextstop_android.viewmodel.StepperViewModel
-import com.google.accompanist.permissions.*
-import com.google.android.gms.location.*
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.google.accompanist.permissions.rememberPermissionState
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.model.*
-import com.google.maps.android.compose.*
+import com.google.android.gms.maps.model.BitmapDescriptor
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
+import com.google.android.gms.maps.model.MapStyleOptions
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerInfoWindow
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
+import com.google.maps.android.compose.rememberMarkerState
 import kotlinx.coroutines.delay
 
 /* ---------- PERMISSION STEPS ---------- */
@@ -57,7 +93,6 @@ private fun stationIcon(context: android.content.Context): BitmapDescriptor {
             Bitmap.createScaledBitmap(bitmap, width, height, true)
         )
     } catch (e: Exception) {
-        // Fallback to default marker if pin.png fails
         BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
     }
 }
@@ -66,14 +101,18 @@ private fun purpleDestinationIcon(context: android.content.Context): BitmapDescr
     return try {
         val originalBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.pin)
         val width = 110
-        val height = (originalBitmap.height * (width / originalBitmap.width.toFloat())).toInt()
+        val height =
+            (originalBitmap.height * (width / originalBitmap.width.toFloat())).toInt()
 
-        val scaledBitmap = Bitmap.createScaledBitmap(originalBitmap, width, height, true)
-        val purpleBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val scaledBitmap =
+            Bitmap.createScaledBitmap(originalBitmap, width, height, true)
+        val purpleBitmap =
+            Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(purpleBitmap)
 
         val paint = Paint().apply {
-            colorFilter = PorterDuffColorFilter(0xFF6F66E3.toInt(), PorterDuff.Mode.SRC_ATOP)
+            colorFilter =
+                PorterDuffColorFilter(0xFF6F66E3.toInt(), PorterDuff.Mode.SRC_ATOP)
         }
         canvas.drawBitmap(scaledBitmap, 0f, 0f, paint)
 
@@ -83,10 +122,7 @@ private fun purpleDestinationIcon(context: android.content.Context): BitmapDescr
     }
 }
 
-private fun infoWindowBitmap(
-    title: String,
-    dark: Boolean
-): Bitmap {
+private fun infoWindowBitmap(title: String, dark: Boolean): Bitmap {
     val width = 640
     val height = 260
     val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
@@ -97,24 +133,22 @@ private fun infoWindowBitmap(
     val accent = 0xFF6F66E3.toInt()
     val cornerRadius = 32f
 
-    // Background
     val bgPaint = Paint().apply {
         color = bgColor
         isAntiAlias = true
     }
-    val bgRect = RectF(0f, 0f, width.toFloat(), height.toFloat())
-    canvas.drawRoundRect(bgRect, cornerRadius, cornerRadius, bgPaint)
 
-    // Purple border
+    val rect = RectF(0f, 0f, width.toFloat(), height.toFloat())
+    canvas.drawRoundRect(rect, cornerRadius, cornerRadius, bgPaint)
+
     val borderPaint = Paint().apply {
         color = accent
-        isAntiAlias = true
         style = Paint.Style.STROKE
         strokeWidth = 8f
+        isAntiAlias = true
     }
-    canvas.drawRoundRect(bgRect, cornerRadius, cornerRadius, borderPaint)
+    canvas.drawRoundRect(rect, cornerRadius, cornerRadius, borderPaint)
 
-    // Title
     val titlePaint = Paint().apply {
         color = textColor.toArgb()
         textSize = 46f
@@ -123,7 +157,6 @@ private fun infoWindowBitmap(
     }
     canvas.drawText(title, 40f, 90f, titlePaint)
 
-    // Subtitle
     val subtitlePaint = Paint().apply {
         color = accent
         textSize = 36f
@@ -131,7 +164,6 @@ private fun infoWindowBitmap(
     }
     canvas.drawText("Tap to select stop", 40f, 150f, subtitlePaint)
 
-    // Button
     val buttonPaint = Paint().apply {
         color = accent
         isAntiAlias = true
@@ -143,8 +175,7 @@ private fun infoWindowBitmap(
         buttonPaint
     )
 
-    // Button text
-    val buttonText = Paint().apply {
+    val buttonTextPaint = Paint().apply {
         color = Color.White.toArgb()
         textAlign = Paint.Align.CENTER
         textSize = 32f
@@ -155,7 +186,7 @@ private fun infoWindowBitmap(
         "SELECT DESTINATION",
         width / 2f,
         220f,
-        buttonText
+        buttonTextPaint
     )
 
     return bitmap
@@ -171,7 +202,7 @@ private fun StationMarker(
     darkTheme: Boolean,
     onSelect: () -> Unit
 ) {
-    if (icon == null) return // Don't render if icon failed to load
+    if (icon == null) return
 
     MarkerInfoWindow(
         state = rememberMarkerState(position = position),
@@ -238,13 +269,16 @@ fun MapsScreen(
         Build.VERSION.SDK_INT >= 33 &&
                 notificationPermission?.status?.isGranted == false ->
             PermissionStep.NOTIFICATIONS
+
         !overlayGranted.value -> PermissionStep.OVERLAY
         else -> PermissionStep.DONE
     }
 
     if (permissionStep != PermissionStep.DONE) {
         Box(
-            modifier = Modifier.fillMaxSize().background(Color.Black),
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background), // Fixed: Dynamic background
             contentAlignment = Alignment.Center
         ) {
             when (permissionStep) {
@@ -334,13 +368,15 @@ fun MapsScreen(
     /* ---------- CAMERA ---------- */
 
     val cameraPositionState = rememberCameraPositionState()
+    var hasCenteredOnUser by rememberSaveable { mutableStateOf(false) }
+
     val userLatLng = uiState.userLocation?.let { LatLng(it.first, it.second) }
-    val destinationLatLng = uiState.destinationLocation?.let { LatLng(it.first, it.second) }
+    val destinationLatLng =
+        uiState.destinationLocation?.let { LatLng(it.first, it.second) }
 
-    val shouldFollowUser = userLatLng != null && destinationLatLng == null && !uiState.alarmArmed
-
-    LaunchedEffect(userLatLng, shouldFollowUser) {
-        if (userLatLng != null && shouldFollowUser) {
+    LaunchedEffect(userLatLng) {
+        if (userLatLng != null && !hasCenteredOnUser) {
+            hasCenteredOnUser = true
             cameraPositionState.animate(
                 CameraUpdateFactory.newLatLngZoom(userLatLng, 14f),
                 800
@@ -380,6 +416,23 @@ fun MapsScreen(
         purpleIcon = purpleDestinationIcon(context)
     }
 
+    LaunchedEffect(transportConfirmed) {
+        if (!transportConfirmed) return@LaunchedEffect
+
+        // Wait until the map projection is ready
+        while (cameraPositionState.projection == null) {
+            delay(16)
+        }
+
+        cameraPositionState.projection
+            ?.visibleRegion
+            ?.latLngBounds
+            ?.let { bounds ->
+                stationViewModel.updateVisibleBounds(bounds)
+            }
+    }
+
+
     GoogleMap(
         modifier = modifier.fillMaxSize(),
         cameraPositionState = cameraPositionState,
@@ -388,7 +441,7 @@ fun MapsScreen(
             mapStyleOptions = try {
                 MapStyleOptions.loadRawResourceStyle(
                     context,
-                    if (darkTheme) R.raw.map_dark_style else R.raw.map_light_style
+                    if (darkTheme) R.raw.map_dark_style else R.raw.map_light_style // Fixed: Light mode support
                 )
             } catch (e: Exception) {
                 null
@@ -399,24 +452,28 @@ fun MapsScreen(
             zoomControlsEnabled = false
         )
     ) {
-        // Station markers
-        uiState.stations.forEach { station ->
-            StationMarker(
-                position = LatLng(station.latitude, station.longitude),
-                title = station.name,
-                icon = pinIcon,
-                darkTheme = darkTheme
-            ) {
-                mapViewModel.setDestination(station)
-                stepperViewModel.selectStation(
-                    station.name,
-                    station.latitude,
-                    station.longitude
-                )
+
+        // ✅ ONLY show station markers if no destination selected
+        if (destinationLatLng == null) {
+            uiState.stations.forEach { station ->
+                StationMarker(
+                    position = LatLng(station.latitude, station.longitude),
+                    title = station.name,
+                    icon = pinIcon,
+                    darkTheme = darkTheme
+                ) {
+                    // User tapped SELECT DESTINATION
+                    mapViewModel.setDestination(station)
+                    stepperViewModel.selectStation(
+                        station.name,
+                        station.latitude,
+                        station.longitude
+                    )
+                }
             }
         }
 
-        // Purple destination marker
+        // ✅ Destination marker (purple pin)
         destinationLatLng?.let {
             Marker(
                 state = MarkerState(it),
