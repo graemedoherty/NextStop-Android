@@ -99,4 +99,7 @@ dependencies {
     // Tooling
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+
+    // Font
+    implementation("androidx.compose.ui:ui-text-google-fonts:1.7.6")
 }

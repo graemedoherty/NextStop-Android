@@ -1,7 +1,12 @@
 package com.example.nextstop_android.ui.stepper
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -23,13 +28,14 @@ fun Step3Screen(
             .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 24.dp)
     ) {
         Text(
-            text = "Step 3: Confirm alarm",
-            fontSize = 15.sp,
+            text = "Step 3: Confirm & set alarm",
+            fontSize = 18.sp,
             fontWeight = FontWeight.SemiBold
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
+        // Transport Details
         Text(
             text = "Transport",
             fontSize = 13.sp,
@@ -41,8 +47,9 @@ fun Step3Screen(
             fontWeight = FontWeight.Medium
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
+        // Destination Details
         Text(
             text = "Destination",
             fontSize = 13.sp,
@@ -54,7 +61,7 @@ fun Step3Screen(
             fontWeight = FontWeight.Medium
         )
 
-        Spacer(modifier = Modifier.weight(1f)) // Added weight to push buttons down consistently
+        Spacer(modifier = Modifier.weight(1f))
 
         PrimaryButton(
             text = "Create Alarm",

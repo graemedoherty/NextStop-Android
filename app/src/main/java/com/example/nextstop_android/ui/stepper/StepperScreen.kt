@@ -5,18 +5,23 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.nextstop_android.model.Station
 import com.example.nextstop_android.service.LocationTrackingService
 import com.example.nextstop_android.ui.maps.MapViewModel
 import com.example.nextstop_android.ui.stations.StationViewModel
 import com.example.nextstop_android.viewmodel.StationViewModelFactory
-import com.example.nextstop_android.model.Station
 import com.example.nextstop_android.viewmodel.StepperViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,7 +36,7 @@ fun StepperScreen(
     val selectedTransport by viewModel.selectedTransport.collectAsState()
     val selectedStation by viewModel.selectedStation.collectAsState()
 
-    // ✅ CREATE STATIONVIEWMODEL HERE
+    // Create StationViewModel for Step 2
     val stationViewModel: StationViewModel = viewModel(
         factory = StationViewModelFactory(context)
     )
@@ -62,10 +67,8 @@ fun StepperScreen(
                         selectedTransport = selectedTransport ?: "",
                         savedStation = selectedStation,
                         onStationSelected = { name, lat, lng ->
-                            // 1. Update the Stepper state (for the UI/Next button)
                             viewModel.selectStation(name, lat, lng)
 
-                            // 2. 🔑 Update the Map state immediately to show the marker
                             val stationObj = Station(
                                 name = name,
                                 type = selectedTransport ?: "",
@@ -82,7 +85,7 @@ fun StepperScreen(
                         onNext = viewModel::nextStep,
                         onBack = viewModel::goBack,
                         mapViewModel = mapViewModel,
-                        stationViewModel = stationViewModel  // ✅ PASS IT HERE
+                        stationViewModel = stationViewModel
                     )
 
                     3 -> Step3Screen(
@@ -92,13 +95,22 @@ fun StepperScreen(
                             selectedStation?.let { station ->
                                 onAlarmCreated(station)
 
-                                // 🔑 Start the tracking service with destination
-                                val serviceIntent = Intent(context, LocationTrackingService::class.java).apply {
-                                    action = LocationTrackingService.ACTION_SET_DESTINATION
-                                    putExtra(LocationTrackingService.EXTRA_DESTINATION_LAT, station.latitude)
-                                    putExtra(LocationTrackingService.EXTRA_DESTINATION_LNG, station.longitude)
-                                    putExtra(LocationTrackingService.EXTRA_DESTINATION_NAME, station.name)
-                                }
+                                val serviceIntent =
+                                    Intent(context, LocationTrackingService::class.java).apply {
+                                        action = LocationTrackingService.ACTION_SET_DESTINATION
+                                        putExtra(
+                                            LocationTrackingService.EXTRA_DESTINATION_LAT,
+                                            station.latitude
+                                        )
+                                        putExtra(
+                                            LocationTrackingService.EXTRA_DESTINATION_LNG,
+                                            station.longitude
+                                        )
+                                        putExtra(
+                                            LocationTrackingService.EXTRA_DESTINATION_NAME,
+                                            station.name
+                                        )
+                                    }
                                 context.startService(serviceIntent)
                             }
                         },

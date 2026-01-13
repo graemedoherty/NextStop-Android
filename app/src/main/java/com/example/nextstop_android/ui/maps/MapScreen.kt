@@ -124,7 +124,7 @@ private fun purpleDestinationIcon(context: android.content.Context): BitmapDescr
 
 private fun infoWindowBitmap(title: String, dark: Boolean): Bitmap {
     val width = 640
-    val height = 260
+    val height = 240 // Slightly reduced height since we removed a line of text
     val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
 
@@ -133,48 +133,42 @@ private fun infoWindowBitmap(title: String, dark: Boolean): Bitmap {
     val accent = 0xFF6F66E3.toInt()
     val cornerRadius = 32f
 
+    // Background
     val bgPaint = Paint().apply {
         color = bgColor
         isAntiAlias = true
     }
-
     val rect = RectF(0f, 0f, width.toFloat(), height.toFloat())
     canvas.drawRoundRect(rect, cornerRadius, cornerRadius, bgPaint)
 
-    val borderPaint = Paint().apply {
-        color = accent
-        style = Paint.Style.STROKE
-        strokeWidth = 8f
-        isAntiAlias = true
-    }
-    canvas.drawRoundRect(rect, cornerRadius, cornerRadius, borderPaint)
+    // ❌ Border Paint Removed as requested
 
+    // Title (Station Name)
     val titlePaint = Paint().apply {
         color = textColor.toArgb()
         textSize = 46f
         typeface = Typeface.DEFAULT_BOLD
         isAntiAlias = true
     }
-    canvas.drawText(title, 40f, 90f, titlePaint)
+    // Shifted down slightly to 100f for better vertical centering
+    canvas.drawText(title, 40f, 100f, titlePaint)
 
-    val subtitlePaint = Paint().apply {
-        color = accent
-        textSize = 36f
-        isAntiAlias = true
-    }
-    canvas.drawText("Tap to select stop", 40f, 150f, subtitlePaint)
+    // ❌ Subtitle text ("Tap to select stop") Removed as requested
 
+    // Button Background
     val buttonPaint = Paint().apply {
         color = accent
         isAntiAlias = true
     }
+    // Positioned button 140f from top
     canvas.drawRoundRect(
-        RectF(40f, 180f, width - 40f, 235f),
+        RectF(40f, 140f, width - 40f, 205f),
         20f,
         20f,
         buttonPaint
     )
 
+    // Button Text
     val buttonTextPaint = Paint().apply {
         color = Color.White.toArgb()
         textAlign = Paint.Align.CENTER
@@ -183,9 +177,9 @@ private fun infoWindowBitmap(title: String, dark: Boolean): Bitmap {
         isAntiAlias = true
     }
     canvas.drawText(
-        "SELECT DESTINATION",
+        "TAP TO SELECT", // Updated text
         width / 2f,
-        220f,
+        185f,
         buttonTextPaint
     )
 

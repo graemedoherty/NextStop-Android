@@ -1,12 +1,23 @@
 package com.example.nextstop_android.ui.stepper
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -28,7 +39,7 @@ fun Step1Screen(
     ) {
         Text(
             text = "Step 1: Select mode of transport",
-            fontSize = 15.sp,
+            fontSize = 18.sp,
             fontWeight = FontWeight.SemiBold
         )
 
@@ -41,7 +52,7 @@ fun Step1Screen(
                 onClick = { onTransportSelected(mode) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp)
+                    .height(60.dp)
                     .padding(vertical = 4.dp),
                 shape = RoundedCornerShape(12.dp),
                 border = BorderStroke(
@@ -58,7 +69,7 @@ fun Step1Screen(
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Text(
                         text = mode,
-                        fontSize = 16.sp,
+                        fontSize = 30.sp,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                         color = if (isSelected) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.onSurface
