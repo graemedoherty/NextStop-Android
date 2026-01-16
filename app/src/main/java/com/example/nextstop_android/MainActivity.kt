@@ -12,7 +12,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.core.content.ContextCompat // 🔑 Required for API compatibility
+import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.example.nextstop_android.service.LocationTrackingService
 import com.example.nextstop_android.ui.journey.JourneyScreen
 import com.example.nextstop_android.ui.maps.MapViewModel
@@ -34,12 +35,16 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // 🔑 1. Initialize the official System Splash Screen
+        // This must be called BEFORE super.onCreate()
+        installSplashScreen()
+
         super.onCreate(savedInstanceState)
 
         // Initialize AdMob
         MobileAds.initialize(this) {}
 
-        // 🔑 FIX: Use ContextCompat to support API 24+
+        // Register broadcast receiver for alarm stopped events
         val filter = IntentFilter(LocationTrackingService.ACTION_ALARM_STOPPED)
         ContextCompat.registerReceiver(
             this,
@@ -52,11 +57,12 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             NextStopAndroidTheme {
+                // 🔑 2. Go straight to your content.
+                // The system handles the transition from your logo to this screen.
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    // 🔑 FIX: Call without parameters if JourneyScreen handles its own ViewModels
                     JourneyScreen()
                 }
             }

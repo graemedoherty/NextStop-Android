@@ -82,11 +82,11 @@ fun Step2Screen(
         Column(modifier = Modifier.fillMaxSize()) {
             Text(
                 text = "Step 2: Select destination station",
-                fontSize = 18.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier
                     .padding(bottom = 12.dp)
-                    
+
             )
 
             if (savedStation == null) {

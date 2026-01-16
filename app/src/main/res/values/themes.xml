@@ -1,17 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.NextStopAndroid" parent="Theme.AppCompat.Light.NoActionBar">
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
+        <item name="windowSplashScreenBackground">#000000</item>
+        <item name="postSplashScreenTheme">@style/Theme.NextStopAndroid</item>
+    </style>
+
+    <style name="Theme.NextStopAndroid" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:statusBarColor">#000000</item>
         <item name="android:windowLightStatusBar">false</item>
-
-        <item name="android:colorBackground">#000000</item>
-
-        <item name="android:windowBackground">#000000</item>
-
-        <item name="android:windowIsTranslucent">false</item>
-        <item name="android:windowNoTitle">true</item>
-        <item name="android:windowContentOverlay">@null</item>
     </style>
+  
 
 </resources>

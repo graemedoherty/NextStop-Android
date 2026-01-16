@@ -29,7 +29,7 @@ fun Step3Screen(
     ) {
         Text(
             text = "Step 3: Confirm & set alarm",
-            fontSize = 18.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold
         )
 
