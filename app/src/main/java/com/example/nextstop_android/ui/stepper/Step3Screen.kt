@@ -1,8 +1,10 @@
 package com.example.nextstop_android.ui.stepper
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -25,54 +27,78 @@ fun Step3Screen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 24.dp)
+            // Tightened padding to match the compact look of Steps 1 and 2
+            .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 12.dp),
+        // 🔑 Distributes title, info, and buttons evenly
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
             text = "Step 3: Confirm & set alarm",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        // ───────────────── DATA FIELDS IN A ROW ─────────────────
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Transport Column
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Transport",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.outline
+                )
+                Text(
+                    text = selectedTransport,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
 
-        // Transport Details
-        Text(
-            text = "Transport",
-            fontSize = 13.sp,
-            color = MaterialTheme.colorScheme.outline
-        )
-        Text(
-            text = selectedTransport,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium
-        )
+            // Destination Column
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Destination",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.outline
+                )
+                Text(
+                    text = selectedStation,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1 // Keeps it from expanding vertically
+                )
+            }
+        }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        // ───────────────── HORIZONTAL BUTTONS ─────────────────
+        // Changed to Row to match the "Back/Next" pattern from Step 2
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            SecondaryButton(
+                text = "Back",
+                onClick = onBack,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(44.dp)
+            )
 
-        // Destination Details
-        Text(
-            text = "Destination",
-            fontSize = 13.sp,
-            color = MaterialTheme.colorScheme.outline
-        )
-        Text(
-            text = selectedStation,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium
-        )
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        PrimaryButton(
-            text = "Create Alarm",
-            onClick = onAlarmSet
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        SecondaryButton(
-            text = "Back",
-            onClick = onBack
-        )
+            PrimaryButton(
+                text = "Create Alarm",
+                onClick = onAlarmSet,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(44.dp)
+            )
+        }
     }
 }

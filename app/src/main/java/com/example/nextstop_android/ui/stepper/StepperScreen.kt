@@ -2,6 +2,10 @@ package com.example.nextstop_android.ui.stepper
 
 import android.content.Intent
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.EaseInOutQuart
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -36,7 +40,6 @@ fun StepperScreen(
     val selectedTransport by viewModel.selectedTransport.collectAsState()
     val selectedStation by viewModel.selectedStation.collectAsState()
 
-    // Create StationViewModel for Step 2
     val stationViewModel: StationViewModel = viewModel(
         factory = StationViewModelFactory(context)
     )
@@ -52,7 +55,28 @@ fun StepperScreen(
             AnimatedContent(
                 targetState = currentStep,
                 transitionSpec = {
-                    slideInHorizontally { it } togetherWith slideOutHorizontally { -it }
+                    // 🔑 Determine direction: Is the user going forward or backward?
+                    val direction = if (targetState > initialState) 1 else -1
+
+                    val animationDuration = 700 // milliseconds
+                    val curve = EaseInOutQuart
+
+                    (slideInHorizontally(
+                        animationSpec = tween(
+                            animationDuration,
+                            easing = curve
+                        )
+                    ) { it * direction } +
+                            fadeIn(animationSpec = tween(animationDuration)))
+                        .togetherWith(
+                            slideOutHorizontally(
+                                animationSpec = tween(
+                                    animationDuration,
+                                    easing = curve
+                                )
+                            ) { -it * direction } +
+                                    fadeOut(animationSpec = tween(animationDuration))
+                        )
                 },
                 label = "stepTransition"
             ) { step ->
@@ -68,7 +92,6 @@ fun StepperScreen(
                         savedStation = selectedStation,
                         onStationSelected = { name, lat, lng ->
                             viewModel.selectStation(name, lat, lng)
-
                             val stationObj = Station(
                                 name = name,
                                 type = selectedTransport ?: "",
@@ -94,7 +117,6 @@ fun StepperScreen(
                         onAlarmSet = {
                             selectedStation?.let { station ->
                                 onAlarmCreated(station)
-
                                 val serviceIntent =
                                     Intent(context, LocationTrackingService::class.java).apply {
                                         action = LocationTrackingService.ACTION_SET_DESTINATION

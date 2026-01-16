@@ -15,12 +15,14 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -34,19 +36,19 @@ import com.example.nextstop_android.viewmodel.StepperViewModel
 
 @Composable
 fun JourneyScreen() {
-
     // 🔑 SINGLE source of truth for ViewModels
     val mapViewModel: MapViewModel = viewModel()
     val stepperViewModel: StepperViewModel = viewModel()
 
     val mapUiState by mapViewModel.uiState.collectAsState()
 
-    // 🔑 ROOT BOX: This allows the Ad to sit on top of the Map
+    // 🔑 ROOT BOX: Essential for layering the Ad Banner on top
     Box(modifier = Modifier.fillMaxSize()) {
 
         Column(modifier = Modifier.fillMaxSize()) {
 
             // ───────────────── STEPPER ─────────────────
+            // This is inside a Column, so expandVertically/shrinkVertically works perfectly.
             AnimatedVisibility(
                 visible = !mapUiState.alarmArmed,
                 enter = expandVertically(),
@@ -58,7 +60,8 @@ fun JourneyScreen() {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .fillMaxHeight(0.5f)
+                        .fillMaxHeight(0.32f)
+                        .clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp))
                         .background(MaterialTheme.colorScheme.surface)
                 ) {
                     StepperScreen(
@@ -76,7 +79,6 @@ fun JourneyScreen() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                // 🔑 CLIP REMOVED: This allows the map to extend to the bottom edges
             ) {
 
                 // 🗺 MAP (Base Layer)
@@ -86,19 +88,21 @@ fun JourneyScreen() {
                     stepperViewModel = stepperViewModel
                 )
 
-                // 🚨 ALARM CARD (Floating layer)
-                // Using explicit package name to avoid ColumnScope conflict if necessary
+                // 🚨 ALARM CARD (Floating layer over map)
+                // 🔑 FIX: Using explicit package call to avoid ColumnScope conflict
                 androidx.compose.animation.AnimatedVisibility(
                     visible = mapUiState.alarmArmed,
                     enter = slideInVertically(
                         initialOffsetY = { it },
                         animationSpec = tween(1000)
                     ) + fadeIn(animationSpec = tween(1000)),
-                    exit = fadeOut(),
+                    exit = slideOutVertically(
+                        targetOffsetY = { it },
+                        animationSpec = tween(1000)
+                    ) + fadeOut(animationSpec = tween(1000)),
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        // 🔑 PUSH UP: Ensures the card is visible above the Ad
-                        .padding(bottom = 80.dp)
+                        .padding(bottom = 90.dp) // Clearance for the Ad Banner
                 ) {
                     val status =
                         if (mapUiState.distanceToDestination in 0..100)
@@ -119,15 +123,22 @@ fun JourneyScreen() {
             }
         }
 
-        // 🎯 AD BANNER OVERLAY
-        // Placed outside the Column but inside the root Box to float at the bottom
+        // 🎯 FLOATING AD BANNER (70% Width)
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(Color.Transparent)
+                .padding(bottom = 16.dp),
+            contentAlignment = Alignment.Center
         ) {
-            AdBanner(modifier = Modifier.fillMaxWidth())
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.8f) // Keeps map visible on sides
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.Transparent)
+            ) {
+                AdBanner(modifier = Modifier.fillMaxWidth())
+            }
         }
     }
 }

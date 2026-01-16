@@ -60,6 +60,7 @@ import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MapStyleOptions
@@ -124,7 +125,7 @@ private fun purpleDestinationIcon(context: android.content.Context): BitmapDescr
 
 private fun infoWindowBitmap(title: String, dark: Boolean): Bitmap {
     val width = 640
-    val height = 240 // Slightly reduced height since we removed a line of text
+    val height = 240
     val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
 
@@ -133,7 +134,6 @@ private fun infoWindowBitmap(title: String, dark: Boolean): Bitmap {
     val accent = 0xFF6F66E3.toInt()
     val cornerRadius = 32f
 
-    // Background
     val bgPaint = Paint().apply {
         color = bgColor
         isAntiAlias = true
@@ -141,26 +141,18 @@ private fun infoWindowBitmap(title: String, dark: Boolean): Bitmap {
     val rect = RectF(0f, 0f, width.toFloat(), height.toFloat())
     canvas.drawRoundRect(rect, cornerRadius, cornerRadius, bgPaint)
 
-    // ❌ Border Paint Removed as requested
-
-    // Title (Station Name)
     val titlePaint = Paint().apply {
         color = textColor.toArgb()
         textSize = 46f
         typeface = Typeface.DEFAULT_BOLD
         isAntiAlias = true
     }
-    // Shifted down slightly to 100f for better vertical centering
     canvas.drawText(title, 40f, 100f, titlePaint)
 
-    // ❌ Subtitle text ("Tap to select stop") Removed as requested
-
-    // Button Background
     val buttonPaint = Paint().apply {
         color = accent
         isAntiAlias = true
     }
-    // Positioned button 140f from top
     canvas.drawRoundRect(
         RectF(40f, 140f, width - 40f, 205f),
         20f,
@@ -168,7 +160,6 @@ private fun infoWindowBitmap(title: String, dark: Boolean): Bitmap {
         buttonPaint
     )
 
-    // Button Text
     val buttonTextPaint = Paint().apply {
         color = Color.White.toArgb()
         textAlign = Paint.Align.CENTER
@@ -177,7 +168,7 @@ private fun infoWindowBitmap(title: String, dark: Boolean): Bitmap {
         isAntiAlias = true
     }
     canvas.drawText(
-        "TAP TO SELECT", // Updated text
+        "TAP TO SELECT",
         width / 2f,
         185f,
         buttonTextPaint
@@ -272,7 +263,7 @@ fun MapsScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background), // Fixed: Dynamic background
+                .background(MaterialTheme.colorScheme.background),
             contentAlignment = Alignment.Center
         ) {
             when (permissionStep) {
@@ -361,7 +352,12 @@ fun MapsScreen(
 
     /* ---------- CAMERA ---------- */
 
-    val cameraPositionState = rememberCameraPositionState()
+    // 🔑 INITIAL CAMERA POSITION: Centered over Ireland (Dublin)
+    val irelandInitial = LatLng(53.3498, -6.2603)
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(irelandInitial, 7f)
+    }
+
     var hasCenteredOnUser by rememberSaveable { mutableStateOf(false) }
 
     val userLatLng = uiState.userLocation?.let { LatLng(it.first, it.second) }
@@ -413,7 +409,6 @@ fun MapsScreen(
     LaunchedEffect(transportConfirmed) {
         if (!transportConfirmed) return@LaunchedEffect
 
-        // Wait until the map projection is ready
         while (cameraPositionState.projection == null) {
             delay(16)
         }
@@ -426,7 +421,6 @@ fun MapsScreen(
             }
     }
 
-
     GoogleMap(
         modifier = modifier.fillMaxSize(),
         cameraPositionState = cameraPositionState,
@@ -435,7 +429,7 @@ fun MapsScreen(
             mapStyleOptions = try {
                 MapStyleOptions.loadRawResourceStyle(
                     context,
-                    if (darkTheme) R.raw.map_dark_style else R.raw.map_light_style // Fixed: Light mode support
+                    if (darkTheme) R.raw.map_dark_style else R.raw.map_light_style
                 )
             } catch (e: Exception) {
                 null
@@ -447,7 +441,6 @@ fun MapsScreen(
         )
     ) {
 
-        // ✅ ONLY show station markers if no destination selected
         if (destinationLatLng == null) {
             uiState.stations.forEach { station ->
                 StationMarker(
@@ -456,7 +449,6 @@ fun MapsScreen(
                     icon = pinIcon,
                     darkTheme = darkTheme
                 ) {
-                    // User tapped SELECT DESTINATION
                     mapViewModel.setDestination(station)
                     stepperViewModel.selectStation(
                         station.name,
@@ -467,7 +459,6 @@ fun MapsScreen(
             }
         }
 
-        // ✅ Destination marker (purple pin)
         destinationLatLng?.let {
             Marker(
                 state = MarkerState(it),
