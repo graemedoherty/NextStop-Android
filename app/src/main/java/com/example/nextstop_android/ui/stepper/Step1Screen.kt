@@ -51,12 +51,7 @@ fun Step1Screen(
         // 🔑 SpaceBetween ensures 'Next' stays at the bottom of the allocated area
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(
-            text = "Step 1: Select mode of transport",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+
 
         Row(
             modifier = Modifier

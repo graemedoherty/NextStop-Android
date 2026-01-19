@@ -4,17 +4,17 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -25,7 +25,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,6 +37,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -63,8 +63,11 @@ fun Step2Screen(
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val dataLoader = remember { StationDataLoader(context) }
-    val mapUiState by mapViewModel.uiState.collectAsState()
-    val userLocation = mapUiState.userLocation
+
+    // 🎨 Theme-aware colors
+    val themePurple = Color(0xFF6F66E3)
+    val onSurfaceText = MaterialTheme.colorScheme.onSurface
+    val onSurfaceVariantText = MaterialTheme.colorScheme.onSurfaceVariant
 
     val stationDataList = remember(selectedTransport) {
         when (selectedTransport) {
@@ -75,11 +78,10 @@ fun Step2Screen(
         }
     }
 
-    val stationNames = stationDataList.map { it.name }
     var searchText by remember { mutableStateOf("") }
     val filteredStations = remember(searchText, selectedTransport) {
-        if (searchText.length < 3) emptyList()
-        else stationNames.filter { it.contains(searchText, ignoreCase = true) }
+        if (searchText.length < 2) emptyList()
+        else stationDataList.map { it.name }.filter { it.contains(searchText, ignoreCase = true) }
     }
 
     Box(
@@ -91,13 +93,6 @@ fun Step2Screen(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                text = "Step 2: Select destination station",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
             Box(modifier = Modifier.fillMaxWidth()) {
                 if (savedStation == null) {
                     OutlinedTextField(
@@ -105,51 +100,67 @@ fun Step2Screen(
                         onValueChange = { searchText = it },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(54.dp),
-                        textStyle = TextStyle(fontSize = 14.sp),
-                        label = { Text("Search Station...", fontSize = 12.sp) },
+                            .height(56.dp),
+                        textStyle = TextStyle(
+                            fontSize = 16.sp,
+                            color = onSurfaceText // 🔑 Adaptive color
+                        ),
+                        placeholder = {
+                            Text(
+                                "Search Station...",
+                                color = onSurfaceVariantText,
+                                fontSize = 16.sp
+                            )
+                        },
                         shape = RoundedCornerShape(10.dp),
                         singleLine = true,
-                        // 🔑 CORRECTED: Using OutlinedTextFieldDefaults
                         colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = onSurfaceText,
+                            unfocusedTextColor = onSurfaceText,
+                            cursorColor = themePurple,
+                            focusedBorderColor = themePurple,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                            focusedBorderColor = MaterialTheme.colorScheme.primary
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent
                         )
                     )
                 } else {
                     Surface(
                         shape = RoundedCornerShape(10.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                        color = themePurple.copy(alpha = 0.1f), // 🔑 Soft purple tint
+                        border = BorderStroke(1.dp, themePurple),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column {
-                                Text(text = "Selected Station:", fontSize = 10.sp)
+                                Text(
+                                    text = "Selected Station:",
+                                    fontSize = 10.sp,
+                                    color = onSurfaceVariantText
+                                )
                                 Text(
                                     text = savedStation.name,
-                                    fontSize = 14.sp,
+                                    fontSize = 15.sp,
+                                    color = onSurfaceText,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
-                            TextButton(
-                                onClick = { onClearStation() },
-                                contentPadding = PaddingValues(0.dp)
-                            ) {
-                                Text("Change", fontSize = 12.sp)
+                            TextButton(onClick = { onClearStation() }) {
+                                Text("Change", color = themePurple, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
                 }
 
-                // 🎯 POPUP (Renders above the Map)
+                // 🎯 Dropdown Popup
                 if (filteredStations.isNotEmpty() && savedStation == null) {
                     Popup(
                         alignment = Alignment.TopCenter,
-                        offset = IntOffset(0, 150),
+                        offset = IntOffset(0, 165),
                         properties = PopupProperties(
                             focusable = false,
                             dismissOnClickOutside = true
@@ -159,19 +170,15 @@ fun Step2Screen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 4.dp)
-                                .wrapContentHeight(),
+                                .heightIn(max = 200.dp),
                             shape = RoundedCornerShape(8.dp),
                             tonalElevation = 8.dp,
-                            shadowElevation = 4.dp,
-                            color = MaterialTheme.colorScheme.surface,
+                            shadowElevation = 10.dp,
+                            color = MaterialTheme.colorScheme.surface, // 🔑 Adaptive popup background
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                         ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .verticalScroll(rememberScrollState())
-                            ) {
-                                filteredStations.take(5).forEach { stationName ->
+                            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                                filteredStations.take(10).forEach { stationName ->
                                     TextButton(
                                         onClick = {
                                             val stationData =
@@ -182,23 +189,20 @@ fun Step2Screen(
                                                 searchText = ""
                                             }
                                         },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        contentPadding = PaddingValues(
-                                            horizontal = 16.dp,
-                                            vertical = 10.dp
-                                        )
+                                        modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Text(
                                             text = stationName,
                                             modifier = Modifier.fillMaxWidth(),
                                             fontSize = 14.sp,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            textAlign = androidx.compose.ui.text.style.TextAlign.Start
+                                            color = onSurfaceText, // 🔑 Adaptive text
+                                            textAlign = TextAlign.Start
                                         )
                                     }
                                     HorizontalDivider(
-                                        thickness = 0.5.dp,
-                                        color = Color.LightGray.copy(alpha = 0.3f)
+                                        color = MaterialTheme.colorScheme.outlineVariant.copy(
+                                            alpha = 0.4f
+                                        )
                                     )
                                 }
                             }
@@ -207,52 +211,40 @@ fun Step2Screen(
                 }
             }
 
-            // ───────────────── NAVIGATION BUTTONS ─────────────────
+            // ───────────────── NAVIGATION ─────────────────
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // 🔑 BACK BUTTON: Purple text and border for high visibility
                 OutlinedButton(
                     onClick = onBack,
                     modifier = Modifier
                         .weight(1f)
-                        .height(42.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(0.dp)
+                        .height(48.dp),
+                    border = BorderStroke(1.dp, themePurple),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = themePurple)
                 ) {
-                    Text("Back", fontSize = 14.sp)
+                    Text("Back", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 }
 
+                // 🔑 NEXT BUTTON: Solid Purple with White text
                 Button(
-                    onClick = {
-                        onNext()
-                        // Bus station bounds logic...
-                        if (selectedTransport == "Bus" && userLocation != null) {
-                            val bounds = com.google.android.gms.maps.model.LatLngBounds.builder()
-                                .include(
-                                    com.google.android.gms.maps.model.LatLng(
-                                        userLocation.first - 0.01,
-                                        userLocation.second - 0.01
-                                    )
-                                )
-                                .include(
-                                    com.google.android.gms.maps.model.LatLng(
-                                        userLocation.first + 0.01,
-                                        userLocation.second + 0.01
-                                    )
-                                )
-                                .build()
-                            stationViewModel.updateVisibleBounds(bounds)
-                        }
-                    },
+                    onClick = { onNext() },
                     enabled = savedStation != null,
                     modifier = Modifier
                         .weight(1f)
-                        .height(42.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(0.dp)
+                        .height(48.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = themePurple,
+                        contentColor = Color.White,
+                        disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                        disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    ),
+                    shape = RoundedCornerShape(10.dp)
                 ) {
                     Text("Next", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }

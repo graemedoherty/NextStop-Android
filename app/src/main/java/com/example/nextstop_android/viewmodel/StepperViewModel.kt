@@ -17,25 +17,33 @@ class StepperViewModel : ViewModel() {
     private val _selectedStation = MutableStateFlow<Station?>(null)
     val selectedStation: StateFlow<Station?> = _selectedStation.asStateFlow()
 
-    // 🔑 NEW: transport confirmation signal
     private val _transportConfirmed = MutableStateFlow(false)
     val transportConfirmed: StateFlow<Boolean> = _transportConfirmed.asStateFlow()
 
     /* ---------------- Navigation ---------------- */
 
-    // Forces UI to Journey/Map screen
-    fun moveToJourney() {
-        _currentStep.value = 3
+    /**
+     * Resets the stepper to a specific index.
+     * Useful for jumping back to Step 1 when an alarm is cancelled.
+     */
+    fun resetToStep(step: Int) {
+        _currentStep.value = step
+        if (step == 1) {
+            _transportConfirmed.value = false
+            _selectedStation.value = null
+            // We keep _selectedTransport if you want them to stay on the same mode,
+            // or null it out if you want a total reset.
+        }
     }
 
     fun nextStep() {
-        // 🚍 When moving forward AFTER transport selection,
-        // we confirm the transport choice
+        // Confirm transport selection when moving past Step 1
         if (_currentStep.value == 1 && _selectedTransport.value != null) {
             _transportConfirmed.value = true
         }
 
-        if (_currentStep.value < 3) {
+        // Increase limit to 4 to accommodate the new Alarm step
+        if (_currentStep.value < 4) {
             _currentStep.value += 1
         }
     }
@@ -50,8 +58,6 @@ class StepperViewModel : ViewModel() {
         if (_selectedTransport.value != transport) {
             _selectedTransport.value = transport
             _selectedStation.value = null
-
-            // Reset confirmation if user changes transport
             _transportConfirmed.value = false
         }
     }
