@@ -78,7 +78,8 @@ class MainActivity : ComponentActivity() {
     private fun handleIntent(intent: Intent?) {
         val screenToLoad = intent?.getStringExtra("SCREEN_TO_LOAD")
         if (screenToLoad == "JOURNEY_SCREEN") {
-            stepperViewModel.moveToJourney()
+            // 🔑 Change this to 4 to show the Live Alarm view when coming from a notification
+            stepperViewModel.resetToStep(4)
         }
     }
 

@@ -32,13 +32,6 @@ fun Step3Screen(
         // 🔑 Distributes title, info, and buttons evenly
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(
-            text = "Step 3: Confirm & set alarm",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
         // ───────────────── DATA FIELDS IN A ROW ─────────────────
         Row(
             modifier = Modifier.fillMaxWidth(),
