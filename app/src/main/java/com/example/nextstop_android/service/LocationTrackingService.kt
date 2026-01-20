@@ -52,7 +52,7 @@ class LocationTrackingService : Service() {
         const val EXTRA_DESTINATION_LAT = "destination_lat"
         const val EXTRA_DESTINATION_LNG = "destination_lng"
         const val EXTRA_DESTINATION_NAME = "destination_name"
-        const val ARRIVAL_THRESHOLD_METERS = 200
+        const val ARRIVAL_THRESHOLD_METERS = 300
     }
 
     // ----------------------------------------------------
