@@ -72,14 +72,7 @@ class AlarmActivity : ComponentActivity() {
         unregisterReceiver(alarmDismissedReceiver)
         super.onStop()
     }
-
-    /**
-     * 🔥 Correct alarm dismissal behavior:
-     * - Stop services
-     * - Close alarm UI
-     * - Return user to HOME
-     * - Do NOT relaunch app
-     */
+    
     private fun stopEverythingAndExit() {
         Log.d("AlarmActivity", "🛑 Alarm dismissed — exiting app")
 
