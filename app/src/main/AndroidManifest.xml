@@ -70,17 +70,18 @@
             android:name=".service.AlarmActionReceiver"
             android:exported="false" />
 
-        <meta-data
-            android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyBvlE5lX1NMKB0XBSzFwGLNQp7mj3Yduys" />
 
         <meta-data
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
 
         <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${MAPS_API_KEY}" />
+
+        <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-1234446515048042~8246020554" />
+            android:value="${ADMOB_APP_ID}" />
 
     </application>
 </manifest>
