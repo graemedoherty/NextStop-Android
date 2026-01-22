@@ -14,12 +14,15 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
 import com.example.nextstop_android.service.LocationTrackingService
 import com.example.nextstop_android.ui.journey.JourneyScreen
 import com.example.nextstop_android.ui.maps.MapViewModel
 import com.example.nextstop_android.ui.theme.NextStopAndroidTheme
 import com.example.nextstop_android.viewmodel.StepperViewModel
 import com.google.android.gms.ads.MobileAds
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -35,14 +38,20 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // 🔑 1. Initialize the official System Splash Screen
-        // This must be called BEFORE super.onCreate()
-        installSplashScreen()
-
+        // Install Android 12+ splash screen
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
 
-        // Initialize AdMob
-        MobileAds.initialize(this) {}
+        // Force window background to black immediately
+        window.setBackgroundDrawableResource(android.R.color.black)
+
+        // Don't keep system splash screen
+        splashScreen.setKeepOnScreenCondition { false }
+
+        // Initialize AdMob on background thread
+        lifecycleScope.launch(Dispatchers.IO) {
+            MobileAds.initialize(this@MainActivity) {}
+        }
 
         // Register broadcast receiver for alarm stopped events
         val filter = IntentFilter(LocationTrackingService.ACTION_ALARM_STOPPED)
@@ -57,8 +66,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             NextStopAndroidTheme {
-                // 🔑 2. Go straight to your content.
-                // The system handles the transition from your logo to this screen.
+                // Show main app - JourneyScreen handles drawer & navigation internally
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -78,7 +86,6 @@ class MainActivity : ComponentActivity() {
     private fun handleIntent(intent: Intent?) {
         val screenToLoad = intent?.getStringExtra("SCREEN_TO_LOAD")
         if (screenToLoad == "JOURNEY_SCREEN") {
-            // 🔑 Change this to 4 to show the Live Alarm view when coming from a notification
             stepperViewModel.resetToStep(4)
         }
     }
@@ -88,7 +95,7 @@ class MainActivity : ComponentActivity() {
         try {
             unregisterReceiver(stopReceiver)
         } catch (e: Exception) {
-            // Safe catch in case it was already unregistered
+            // Safe catch in case already unregistered
         }
     }
 }
