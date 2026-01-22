@@ -42,7 +42,6 @@ import kotlinx.coroutines.launch
 fun JourneyScreen() {
     val mapViewModel: MapViewModel = viewModel()
     val stepperViewModel: StepperViewModel = viewModel()
-
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -59,21 +58,11 @@ fun JourneyScreen() {
         return
     }
 
-    // TODO: Add Settings screen when ready
-    // if (showSettingsScreen) {
-    //     SettingsScreen(onBackClick = { showSettingsScreen = false })
-    //     return
-    // }
-
-    // TODO: Add History screen when ready
-    // if (showHistoryScreen) {
-    //     HistoryScreen(onBackClick = { showHistoryScreen = false })
-    //     return
-    // }
 
     // Main Journey Screen with Drawer
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = false,
         drawerContent = {
             BurgerMenuContent(
                 onSettingsClick = {
