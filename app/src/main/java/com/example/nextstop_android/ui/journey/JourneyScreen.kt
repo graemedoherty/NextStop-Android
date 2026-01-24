@@ -58,22 +58,10 @@ fun JourneyScreen() {
         )
         return
     }
-
-    // TODO: Add Settings screen when ready
-    // if (showSettingsScreen) {
-    //     SettingsScreen(onBackClick = { showSettingsScreen = false })
-    //     return
-    // }
-
-    // TODO: Add History screen when ready
-    // if (showHistoryScreen) {
-    //     HistoryScreen(onBackClick = { showHistoryScreen = false })
-    //     return
-    // }
-
-    // Main Journey Screen with Drawer
+    //Settings Modal
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = false,
         drawerContent = {
             BurgerMenuContent(
                 onSettingsClick = {
