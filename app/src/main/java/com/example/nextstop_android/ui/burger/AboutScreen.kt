@@ -167,7 +167,11 @@ fun AboutScreen(
             }
 
             LegalLink("Open Source Licenses") {
-                // TODO: Implement licenses screen
+                val intent = Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://graemedoherty.github.io/NextStop-Android/legal/licenses.html")
+                )
+                context.startActivity(intent)
             }
 
             Spacer(modifier = Modifier.height(32.dp))

@@ -58,8 +58,16 @@ fun BurgerMenuContent(
                     .fillMaxWidth()
                     .padding(bottom = 8.dp)
             ) {
+
+                val isDarkTheme = androidx.compose.foundation.isSystemInDarkTheme()
+                val logoResource = if (isDarkTheme) {
+                    R.drawable.white_app_icon
+                } else {
+                    R.drawable.black_app_icon
+                }
+
                 Image(
-                    painter = painterResource(id = R.drawable.white_app_icon),
+                    painter = painterResource(id = logoResource), // 3. Use the dynamic resource
                     contentDescription = "App Icon",
                     modifier = Modifier
                         .size(32.dp)

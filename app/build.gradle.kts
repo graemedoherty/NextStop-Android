@@ -1,7 +1,16 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsKotlinAndroid)
     id("org.jetbrains.kotlin.plugin.compose") version "2.0.0"
+}
+
+// ✅ READ API KEYS FROM local.properties
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.inputStream().use { localProperties.load(it) }
 }
 
 android {
@@ -19,6 +28,13 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // ✅ INJECT API KEYS AS MANIFEST PLACEHOLDERS
+        val mapsApiKey = localProperties.getProperty("MAPS_API_KEY") ?: ""
+        val admobAppId = localProperties.getProperty("ADMOB_APP_ID") ?: ""
+
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+        manifestPlaceholders["ADMOB_APP_ID"] = admobAppId
     }
 
     buildTypes {
@@ -78,31 +94,26 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("com.google.code.gson:gson:2.10.1")
 
-    // --- Testing (CLEANED & FIXED) ---
+    // --- Testing ---
     testImplementation(libs.junit)
 
-    // Android Test Core - Essential for ActivityInvoker
     val androidTestVersion = "1.6.1"
     androidTestImplementation("androidx.test:core-ktx:$androidTestVersion")
     androidTestImplementation("androidx.test:runner:$androidTestVersion")
     androidTestImplementation("androidx.test:rules:$androidTestVersion")
 
-    // UI Testing Tools
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
 
-    // Compose Testing - Using BOM for version alignment
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 
-    // Tooling
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
-    // Font
+    // --- Additional Dependencies ---
     implementation("androidx.compose.ui:ui-text-google-fonts:1.7.6")
-
     implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("com.google.android.material:material:1.12.0")
 }
