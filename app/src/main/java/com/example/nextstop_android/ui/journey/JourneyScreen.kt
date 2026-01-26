@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -24,7 +26,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nextstop_android.ui.ads.AdBanner
@@ -39,53 +40,40 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun JourneyScreen() {
-    val mapViewModel: MapViewModel = viewModel()
-    val stepperViewModel: StepperViewModel = viewModel()
-
+fun JourneyScreen(
+    mapViewModel: MapViewModel = viewModel(),
+    stepperViewModel: StepperViewModel = viewModel()
+) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-
-    // Navigation state
     var showAboutScreen by remember { mutableStateOf(false) }
-    var showSettingsScreen by remember { mutableStateOf(false) }
-    var showHistoryScreen by remember { mutableStateOf(false) }
 
-    // Show About screen if active
     if (showAboutScreen) {
-        AboutScreen(
-            onBackClick = { showAboutScreen = false }
-        )
+        AboutScreen(onBackClick = { showAboutScreen = false })
         return
     }
-    //Settings Modal
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         gesturesEnabled = false,
         drawerContent = {
             BurgerMenuContent(
-                onSettingsClick = {
-                    scope.launch { drawerState.close() }
-                    showSettingsScreen = true
-                },
-                onHistoryClick = {
-                    scope.launch { drawerState.close() }
-                    showHistoryScreen = true
-                },
-                onAboutClick = {
-                    scope.launch { drawerState.close() }
-                    showAboutScreen = true
-                },
-                onCloseClick = {
-                    scope.launch { drawerState.close() }
-                }
+                onSettingsClick = { scope.launch { drawerState.close() } },
+                onHistoryClick = { scope.launch { drawerState.close() } },
+                onAboutClick = { scope.launch { drawerState.close() }; showAboutScreen = true },
+                onCloseClick = { scope.launch { drawerState.close() } }
             )
         }
     ) {
-        // Main Content
-        Box(modifier = Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // ───────────────── STEPPER SECTION ─────────────────
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding() // 🔑 Pushes content below the camera/status bar
+                    .navigationBarsPadding() // 🔑 Respects bottom gesture bar
+            ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -96,39 +84,28 @@ fun JourneyScreen() {
                     StepperScreen(
                         mapViewModel = mapViewModel,
                         viewModel = stepperViewModel,
-                        onAlarmCreated = { station ->
-                            mapViewModel.startAlarm(station)
-                        }
+                        onAlarmCreated = { station -> mapViewModel.startAlarm(station) }
                     )
                 }
 
-                // ───────────────── GAP DIVIDER ─────────────────
-                Spacer(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .background(MaterialTheme.colorScheme.background)
-                )
+                Spacer(modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp))
 
-                // ───────────────── MAP SECTION ─────────────────
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
                         .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
                 ) {
-                    // Map
                     MapsScreen(
                         modifier = Modifier.fillMaxSize(),
                         mapViewModel = mapViewModel,
                         stepperViewModel = stepperViewModel
                     )
 
-                    // 🎯 BURGER MENU TRIGGER (Floating on Map)
                     BurgerMenuButton(
-                        onClick = {
-                            scope.launch { drawerState.open() }
-                        },
+                        onClick = { scope.launch { drawerState.open() } },
                         modifier = Modifier
                             .padding(16.dp)
                             .align(Alignment.TopStart)
@@ -136,22 +113,13 @@ fun JourneyScreen() {
                 }
             }
 
-            // 🎯 FLOATING AD BANNER
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                contentAlignment = Alignment.Center
+                    .padding(bottom = 16.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.8f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.Transparent)
-                ) {
-                    AdBanner(modifier = Modifier.fillMaxWidth())
-                }
+                AdBanner(modifier = Modifier.fillMaxWidth())
             }
         }
     }
