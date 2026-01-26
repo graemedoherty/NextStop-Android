@@ -1,7 +1,7 @@
 package com.example.nextstop_android.ui.maps
 
 import android.Manifest
-import android.content.Intent
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -11,10 +11,6 @@ import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
 import android.graphics.RectF
 import android.graphics.Typeface
-import android.net.Uri
-import android.os.Build
-import android.os.Looper
-import android.provider.Settings
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -22,12 +18,9 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -36,10 +29,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -48,19 +39,11 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nextstop_android.R
 import com.example.nextstop_android.ui.stations.StationViewModel
-import com.example.nextstop_android.ui.stepper.PermissionStepCard
 import com.example.nextstop_android.viewmodel.StationViewModelFactory
 import com.example.nextstop_android.viewmodel.StepperViewModel
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import com.google.accompanist.permissions.rememberPermissionState
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
@@ -85,11 +68,9 @@ import com.google.maps.android.compose.rememberMarkerState
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 
-/* ---------- PERMISSION STEPS ---------- */
-private enum class PermissionStep { LOCATION, NOTIFICATIONS, OVERLAY, DONE }
+/* ---------- MARKER HELPERS (BITMAP GENERATION) ---------- */
 
-/* ---------- MARKER HELPERS ---------- */
-private fun stationIcon(context: android.content.Context): BitmapDescriptor {
+private fun stationIcon(context: Context): BitmapDescriptor {
     return try {
         val bitmap = BitmapFactory.decodeResource(context.resources, R.drawable.pin)
         val width = 96
@@ -100,7 +81,7 @@ private fun stationIcon(context: android.content.Context): BitmapDescriptor {
     }
 }
 
-private fun purpleDestinationIcon(context: android.content.Context): BitmapDescriptor {
+private fun purpleDestinationIcon(context: Context): BitmapDescriptor {
     return try {
         val originalBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.pin)
         val width = 110
@@ -134,16 +115,24 @@ private fun infoWindowBitmap(title: String, dark: Boolean): Bitmap {
         cornerRadius,
         bgPaint
     )
+
     val titlePaint = Paint().apply {
-        color = textColor.toArgb(); textSize = 46f; typeface = Typeface.DEFAULT_BOLD; isAntiAlias =
-        true
+        color = textColor.toArgb()
+        textSize = 46f
+        typeface = Typeface.DEFAULT_BOLD
+        isAntiAlias = true
     }
     canvas.drawText(title, 40f, 100f, titlePaint)
+
     val buttonPaint = Paint().apply { color = accent; isAntiAlias = true }
     canvas.drawRoundRect(RectF(40f, 140f, width - 40f, 205f), 20f, 20f, buttonPaint)
+
     val buttonTextPaint = Paint().apply {
-        color = Color.White.toArgb(); textAlign = Paint.Align.CENTER; textSize = 32f; typeface =
-        Typeface.DEFAULT_BOLD; isAntiAlias = true
+        color = Color.White.toArgb()
+        textAlign = Paint.Align.CENTER
+        textSize = 32f
+        typeface = Typeface.DEFAULT_BOLD
+        isAntiAlias = true
     }
     canvas.drawText("TAP TO SELECT", width / 2f, 185f, buttonTextPaint)
     return bitmap
@@ -160,6 +149,8 @@ private fun coreDotIcon(): BitmapDescriptor {
     canvas.drawCircle(center, center, (size / 2f) - 6f, corePaint)
     return BitmapDescriptorFactory.fromBitmap(bitmap)
 }
+
+/* ---------- CUSTOM MARKER COMPONENTS ---------- */
 
 @Composable
 fun PulsatingLocationMarker(position: LatLng) {
@@ -207,18 +198,23 @@ private fun StationMarker(
     MarkerInfoWindow(
         state = rememberMarkerState(position = position),
         icon = icon,
-        onInfoWindowClick = { onSelect() }) {
-        Image(bitmap = remember(title, darkTheme) {
-            infoWindowBitmap(
-                title,
-                darkTheme
-            )
-        }.asImageBitmap(), contentDescription = null, modifier = Modifier.width(320.dp))
+        onInfoWindowClick = { onSelect() }
+    ) {
+        Image(
+            bitmap = remember(title, darkTheme) {
+                infoWindowBitmap(
+                    title,
+                    darkTheme
+                )
+            }.asImageBitmap(),
+            contentDescription = null,
+            modifier = Modifier.width(320.dp)
+        )
     }
 }
 
-/* ---------- MAP SCREEN ---------- */
-@OptIn(ExperimentalPermissionsApi::class)
+/* ---------- MAIN MAP SCREEN ---------- */
+
 @Composable
 fun MapsScreen(
     modifier: Modifier = Modifier,
@@ -230,102 +226,47 @@ fun MapsScreen(
     val darkTheme = isSystemInDarkTheme()
     val stationViewModel: StationViewModel = viewModel(factory = StationViewModelFactory(context))
 
-    val locationPermissions = rememberMultiplePermissionsState(
-        listOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        )
-    )
-    val notificationPermission =
-        if (Build.VERSION.SDK_INT >= 33) rememberPermissionState(Manifest.permission.POST_NOTIFICATIONS) else null
-    val overlayGranted = remember { mutableStateOf(Settings.canDrawOverlays(context)) }
-
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) overlayGranted.value =
-                Settings.canDrawOverlays(context)
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
-    val permissionStep = when {
-        !locationPermissions.allPermissionsGranted -> PermissionStep.LOCATION
-        Build.VERSION.SDK_INT >= 33 && notificationPermission?.status?.isGranted == false -> PermissionStep.NOTIFICATIONS
-        !overlayGranted.value -> PermissionStep.OVERLAY
-        else -> PermissionStep.DONE
-    }
-
-    if (permissionStep != PermissionStep.DONE) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background),
-            contentAlignment = Alignment.Center
-        ) {
-            when (permissionStep) {
-                PermissionStep.LOCATION -> PermissionStepCard(
-                    "Location Access",
-                    "We need your location to alert you before your stop.",
-                    "Allow Location"
-                ) { locationPermissions.launchMultiplePermissionRequest() }
-
-                PermissionStep.NOTIFICATIONS -> PermissionStepCard(
-                    "Notifications",
-                    "Allow notifications so we can alert you in time.",
-                    "Allow Notifications"
-                ) { notificationPermission?.launchPermissionRequest() }
-
-                PermissionStep.OVERLAY -> PermissionStepCard(
-                    "Display Over Other Apps",
-                    "Required to show alarms over navigation apps.",
-                    "Enable Overlay"
-                ) {
-                    context.startActivity(
-                        Intent(
-                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            Uri.parse("package:${context.packageName}")
-                        )
-                    )
-                }
-
-                else -> Unit
-            }
-        }
-        return
-    }
+    // 🔑 THE FIX: Observe permission state
+    // If the overlay is showing, we likely don't have permission yet.
+    // When showPermissionOverlay becomes FALSE, we trigger the location check.
+    val isOverlayShowing = stepperViewModel.showPermissionOverlay
 
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
-    DisposableEffect(Unit) {
-        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 4000).build()
-        val callback = object : LocationCallback() {
-            override fun onLocationResult(result: LocationResult) {
-                result.lastLocation?.let {
-                    mapViewModel.updateUserLocation(
-                        it.latitude,
-                        it.longitude
-                    )
+
+    // Re-run this effect whenever the overlay disappears
+    DisposableEffect(isOverlayShowing) {
+        val hasPermission = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (hasPermission && !isOverlayShowing) {
+            val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 4000).build()
+            val callback = object : LocationCallback() {
+                override fun onLocationResult(result: LocationResult) {
+                    result.lastLocation?.let {
+                        mapViewModel.updateUserLocation(it.latitude, it.longitude)
+                    }
                 }
             }
+            fusedLocationClient.requestLocationUpdates(
+                request,
+                callback,
+                android.os.Looper.getMainLooper()
+            )
+            onDispose { fusedLocationClient.removeLocationUpdates(callback) }
+        } else {
+            onDispose { }
         }
-        if (ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            fusedLocationClient.requestLocationUpdates(request, callback, Looper.getMainLooper())
-        }
-        onDispose { fusedLocationClient.removeLocationUpdates(callback) }
     }
 
     val selectedTransport by stepperViewModel.selectedTransport.collectAsState()
     val transportConfirmed by stepperViewModel.transportConfirmed.collectAsState()
     val visibleStations by stationViewModel.visibleStations.collectAsState()
+
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(LatLng(53.3498, -6.2603), 7f)
     }
-    var hasCenteredOnUser by rememberSaveable { mutableStateOf(false) }
+    var hasCenteredOnUser by remember { mutableStateOf(false) }
 
     LaunchedEffect(selectedTransport, transportConfirmed) {
         if (transportConfirmed && selectedTransport != null) {
@@ -338,7 +279,7 @@ fun MapsScreen(
     val userLatLng = uiState.userLocation?.let { LatLng(it.first, it.second) }
     val destinationLatLng = uiState.destinationLocation?.let { LatLng(it.first, it.second) }
 
-    // Logic: If NO destination is set, stay centered on the user.
+    // Auto-center on user
     LaunchedEffect(userLatLng) {
         if (userLatLng != null && !hasCenteredOnUser && destinationLatLng == null) {
             hasCenteredOnUser = true
@@ -346,20 +287,18 @@ fun MapsScreen(
         }
     }
 
-    // --- ⚡ THE FIX: AUTO-FIT BOTH MARKERS ---
-    // When destination is selected, calculate a box (bounds) containing both points.
+    // Auto-fit both markers
     LaunchedEffect(destinationLatLng, userLatLng) {
         if (userLatLng != null && destinationLatLng != null) {
             val bounds = LatLngBounds.Builder()
                 .include(userLatLng)
                 .include(destinationLatLng)
                 .build()
-
-            // 200 units of padding ensures pins aren't cut off by the UI
             cameraPositionState.animate(CameraUpdateFactory.newLatLngBounds(bounds, 200), 1000)
         }
     }
 
+    // Track visible map bounds
     LaunchedEffect(transportConfirmed) {
         if (transportConfirmed) {
             snapshotFlow { Pair(cameraPositionState.projection, cameraPositionState.position.zoom) }
@@ -374,6 +313,7 @@ fun MapsScreen(
 
     var pinIcon by remember { mutableStateOf<BitmapDescriptor?>(null) }
     var purpleIcon by remember { mutableStateOf<BitmapDescriptor?>(null) }
+
     LaunchedEffect(Unit) {
         pinIcon = stationIcon(context)
         purpleIcon = purpleDestinationIcon(context)
@@ -395,18 +335,16 @@ fun MapsScreen(
         ),
         uiSettings = MapUiSettings(myLocationButtonEnabled = true, zoomControlsEnabled = false)
     ) {
-        // ALWAYS visible: Your current position
         userLatLng?.let { PulsatingLocationMarker(it) }
 
-        // Visible only during selection phase
         if (destinationLatLng == null && cameraPositionState.position.zoom >= 11f) {
             uiState.stations.forEach { station ->
                 key(station.name + station.latitude) {
                     StationMarker(
-                        position = LatLng(station.latitude, station.longitude),
-                        title = station.name,
-                        icon = pinIcon,
-                        darkTheme = darkTheme
+                        LatLng(station.latitude, station.longitude),
+                        station.name,
+                        pinIcon,
+                        darkTheme
                     ) {
                         mapViewModel.setDestination(station)
                         stepperViewModel.selectStation(
@@ -419,7 +357,6 @@ fun MapsScreen(
             }
         }
 
-        // ALWAYS visible once an alarm is set: The Destination
         destinationLatLng?.let {
             Marker(
                 state = MarkerState(it),
