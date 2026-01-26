@@ -2,17 +2,17 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
 
     <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <!-- Black background -->
         <item name="windowSplashScreenBackground">@android:color/black</item>
-
-        <item name="windowSplashScreenIconBackgroundColor">@android:color/black</item>
-
-        <item name="windowSplashScreenAnimatedIcon">@drawable/white_app_icon</item>
-
+        <!-- Remove icon background color -->
+        <item name="windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
+        <!-- Make icon transparent or very small -->
+        <item name="windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+        <!-- Minimal duration - 200ms -->
+        <item name="windowSplashScreenAnimationDuration">200</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:statusBarColor">@android:color/black</item>
-
         <item name="postSplashScreenTheme">@style/Theme.NextStopAndroid</item>
-
         <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
     </style>
 
@@ -21,7 +21,6 @@
         <item name="android:statusBarColor">#000000</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:navigationBarColor">#000000</item>
-
         <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
     </style>
 

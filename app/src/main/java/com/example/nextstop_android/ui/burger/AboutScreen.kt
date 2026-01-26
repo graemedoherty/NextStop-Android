@@ -157,19 +157,25 @@ fun AboutScreen(
 
             LegalLink("Privacy Policy") {
                 val intent =
-                    Intent(Intent.ACTION_VIEW, Uri.parse("https://www.nextstop.app/privacy"))
+                    Intent(
+                        Intent.ACTION_VIEW,
+                        Uri.parse("https://graemedoherty.github.io/NextStop-Android/legal/privacy.html")
+                    )
                 context.startActivity(intent)
             }
 
             LegalLink("Terms of Service") {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.nextstop.app/terms"))
+                val intent = Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://graemedoherty.github.io/NextStop-Android/legal/terms.html")
+                )
                 context.startActivity(intent)
             }
 
             LegalLink("Open Source Licenses") {
                 val intent = Intent(
                     Intent.ACTION_VIEW,
-                    Uri.parse("https://graemedoherty.github.io/NextStop-Android/legal/licenses.html")
+                    Uri.parse("https://graemedoherty.github.io/NextStop-Android/legal/license.html")
                 )
                 context.startActivity(intent)
             }

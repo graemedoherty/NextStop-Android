@@ -10,6 +10,7 @@ import androidx.lifecycle.AndroidViewModel
 import com.example.nextstop_android.model.Station
 import com.example.nextstop_android.service.LocationTrackingService
 import com.example.nextstop_android.viewmodel.StepperViewModel
+import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -17,28 +18,21 @@ import kotlinx.coroutines.flow.update
 class MapViewModel(application: Application) : AndroidViewModel(application) {
 
     private val appContext = getApplication<Application>()
+    private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(appContext)
 
     private val _uiState = MutableStateFlow(MapUiState())
     val uiState: StateFlow<MapUiState> = _uiState
 
-    /**
-     * 🔔 Receiver for live distance + user location updates
-     */
     private val distanceReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent == null) return
-
             val distance = intent.getIntExtra("distance", -1)
             val lat = intent.getDoubleExtra("user_lat", 0.0)
             val lng = intent.getDoubleExtra("user_lng", 0.0)
-
             updateTracking(lat, lng, distance)
         }
     }
 
-    /**
-     * 🛑 Receiver fired when alarm is stopped from anywhere
-     */
     private val alarmStoppedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             resetAllState()
@@ -46,7 +40,16 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     init {
-        // Distance updates
+        // 🔑 SILENT WARM-UP: Get location immediately while splash is scrolling
+        try {
+            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                location?.let {
+                    updateUserLocation(it.latitude, it.longitude)
+                }
+            }
+        } catch (e: SecurityException) { /* Handle missing permissions if necessary */
+        }
+
         ContextCompat.registerReceiver(
             appContext,
             distanceReceiver,
@@ -54,7 +57,6 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
 
-        // Alarm fully stopped
         ContextCompat.registerReceiver(
             appContext,
             alarmStoppedReceiver,
@@ -63,59 +65,29 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
-    /* -----------------------------------------------------------------------
-     * Station / Map state
-     * --------------------------------------------------------------------- */
-
-    /**
-     * 📍 Stations currently visible / relevant to the map
-     */
     fun setStations(stations: List<Station>) {
-        _uiState.update {
-            it.copy(
-                stations = stations,
-                isLoading = false,
-                error = null
-            )
-        }
+        _uiState.update { it.copy(stations = stations, isLoading = false, error = null) }
     }
 
     fun setLoading(isLoading: Boolean) {
-        _uiState.update {
-            it.copy(isLoading = isLoading)
-        }
+        _uiState.update { it.copy(isLoading = isLoading) }
     }
 
     fun setError(message: String?) {
-        _uiState.update {
-            it.copy(
-                error = message,
-                isLoading = false
-            )
-        }
+        _uiState.update { it.copy(error = message, isLoading = false) }
     }
 
-    /**
-     * 📍 User selects destination
-     */
     fun setDestination(station: Station) {
         _uiState.update {
             it.copy(
                 selectedStation = station,
                 destinationLocation = station.latitude to station.longitude,
                 distanceToDestination = -1,
-                stations = emptyList()  // ✅ CLEAR ALL STATION MARKERS
+                stations = emptyList()
             )
         }
     }
 
-    /* -----------------------------------------------------------------------
-     * Alarm lifecycle
-     * --------------------------------------------------------------------- */
-
-    /**
-     * 🚨 Alarm armed (Journey started)
-     */
     fun startAlarm(station: Station) {
         _uiState.update {
             it.copy(
@@ -125,26 +97,19 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
                 alarmActive = true,
                 alarmArrived = false,
                 distanceToDestination = -1,
-                stations = emptyList()  // ✅ CLEAR ALL STATION MARKERS
+                stations = emptyList()
             )
         }
     }
 
-    /**
-     * 📍 Passive location update (map tracking only)
-     */
     fun updateUserLocation(latitude: Double, longitude: Double) {
         _uiState.update {
             it.copy(userLocation = latitude to longitude)
         }
     }
 
-    /**
-     * 📡 Live tracking updates from service
-     */
     fun updateTracking(latitude: Double, longitude: Double, distanceMeters: Int) {
         val arrived = distanceMeters in 0..LocationTrackingService.ARRIVAL_THRESHOLD_METERS
-
         _uiState.update {
             it.copy(
                 userLocation = latitude to longitude,
@@ -154,36 +119,25 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * ❌ User cancels alarm manually
-     */
     fun cancelAlarm(stepperViewModel: StepperViewModel? = null) {
         val stopIntent = Intent(appContext, LocationTrackingService::class.java).apply {
             action = LocationTrackingService.ACTION_STOP
         }
         appContext.startService(stopIntent)
-
         resetAllState()
         stepperViewModel?.reset()
     }
 
-    /**
-     * 🔄 Hard reset — used when alarm stops ANYWHERE
-     */
     private fun resetAllState() {
         _uiState.update { MapUiState() }
     }
 
-    /**
-     * 🧹 Lifecycle cleanup
-     */
     override fun onCleared() {
         super.onCleared()
         try {
             appContext.unregisterReceiver(distanceReceiver)
             appContext.unregisterReceiver(alarmStoppedReceiver)
         } catch (_: Exception) {
-            // Already unregistered — safe to ignore
         }
     }
 }
