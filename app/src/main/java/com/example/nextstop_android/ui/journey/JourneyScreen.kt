@@ -4,6 +4,9 @@ import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +23,7 @@ import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -60,8 +64,7 @@ fun JourneyScreen(
     val scope = rememberCoroutineScope()
     var showAboutScreen by remember { mutableStateOf(false) }
 
-    // --- 🔑 PERMISSION LAUNCHERS ---
-
+    // --- 🔑 PERMISSION LAUNCHERS (Kept Intact) ---
     val locationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { stepperViewModel.checkPermissions(context) }
@@ -70,9 +73,7 @@ fun JourneyScreen(
         ActivityResultContracts.RequestPermission()
     ) { stepperViewModel.checkPermissions(context) }
 
-    // --- 🔑 LIFECYCLE OBSERVER ---
-    // Re-check permissions every time the user brings the app to the foreground
-    // (Crucial for detecting when they return from System Settings Overlay page)
+    // --- 🔑 LIFECYCLE OBSERVER (Kept Intact) ---
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -83,111 +84,125 @@ fun JourneyScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    if (showAboutScreen) {
-        AboutScreen(onBackClick = { showAboutScreen = false })
-        return
-    }
+    // 🔑 THE FIX: Removed the 'return' block that was destroying the Map.
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        gesturesEnabled = false,
-        drawerContent = {
-            BurgerMenuContent(
-                onSettingsClick = { scope.launch { drawerState.close() } },
-                onHistoryClick = { scope.launch { drawerState.close() } },
-                onAboutClick = { scope.launch { drawerState.close() }; showAboutScreen = true },
-                onCloseClick = { scope.launch { drawerState.close() } }
-            )
-        }
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-        ) {
-
-            // --- LAYER 1: MAIN CONTENT ---
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-                    .navigationBarsPadding()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight(0.32f)
-                        .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
-                        .background(MaterialTheme.colorScheme.surface)
-                ) {
-                    StepperScreen(
-                        mapViewModel = mapViewModel,
-                        viewModel = stepperViewModel,
-                        onAlarmCreated = { station -> mapViewModel.startAlarm(station) }
-                    )
-                }
-
-                Spacer(modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp))
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                ) {
-                    MapsScreen(
-                        modifier = Modifier.fillMaxSize(),
-                        mapViewModel = mapViewModel,
-                        stepperViewModel = stepperViewModel
-                    )
-
-                    BurgerMenuButton(
-                        onClick = { scope.launch { drawerState.open() } },
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .align(Alignment.TopStart)
-                    )
-                }
+    Box(modifier = Modifier.fillMaxSize()) {
+        // --- LAYER 1: MAIN CONTENT (Stays mounted in background) ---
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            gesturesEnabled = false,
+            drawerContent = {
+                BurgerMenuContent(
+                    onSettingsClick = { scope.launch { drawerState.close() } },
+                    onHistoryClick = { scope.launch { drawerState.close() } },
+                    onAboutClick = {
+                        scope.launch { drawerState.close() }
+                        showAboutScreen = true
+                    },
+                    onCloseClick = { scope.launch { drawerState.close() } }
+                )
             }
-
-            // --- LAYER 2: ADS ---
+        ) {
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp)
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
             ) {
-                AdBanner(modifier = Modifier.fillMaxWidth())
-            }
-
-            // --- LAYER 3: THE PERMISSION GATE (THE FIX) ---
-            // This sits on top of everything and intercepts all clicks
-            if (stepperViewModel.showPermissionOverlay) {
-                PermissionOverlay(
-                    title = stepperViewModel.permissionTitle,
-                    description = stepperViewModel.permissionDescription,
-                    buttonText = stepperViewModel.permissionButtonText,
-                    onAction = {
-                        stepperViewModel.handlePermissionRequest(
-                            context = context,
-                            onLaunchLocation = {
-                                locationLauncher.launch(
-                                    arrayOf(
-                                        Manifest.permission.ACCESS_FINE_LOCATION,
-                                        Manifest.permission.ACCESS_COARSE_LOCATION
-                                    )
-                                )
-                            },
-                            onLaunchNotifications = {
-                                if (Build.VERSION.SDK_INT >= 33) {
-                                    notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                }
-                            }
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding()
+                        .navigationBarsPadding()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight(0.32f)
+                            .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
+                            .background(MaterialTheme.colorScheme.surface)
+                    ) {
+                        StepperScreen(
+                            mapViewModel = mapViewModel,
+                            viewModel = stepperViewModel,
+                            onAlarmCreated = { station -> mapViewModel.startAlarm(station) }
                         )
                     }
-                )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                    ) {
+                        MapsScreen(
+                            modifier = Modifier.fillMaxSize(),
+                            mapViewModel = mapViewModel,
+                            stepperViewModel = stepperViewModel
+                        )
+
+                        BurgerMenuButton(
+                            onClick = { scope.launch { drawerState.open() } },
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .align(Alignment.TopStart)
+                        )
+                    }
+                }
+
+                // --- LAYER 2: ADS (Kept Intact) ---
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                ) {
+                    AdBanner(modifier = Modifier.fillMaxWidth())
+                }
+
+                // --- LAYER 3: ONBOARDING GATE (Kept Intact) ---
+                if (stepperViewModel.showPermissionOverlay) {
+                    PermissionOverlay(
+                        pageIndex = stepperViewModel.onboardingPage,
+                        title = stepperViewModel.permissionTitle,
+                        description = stepperViewModel.permissionDescription,
+                        buttonText = stepperViewModel.permissionButtonText,
+                        onAction = {
+                            stepperViewModel.handlePermissionRequest(
+                                context = context,
+                                onLaunchLocation = {
+                                    locationLauncher.launch(
+                                        arrayOf(
+                                            Manifest.permission.ACCESS_FINE_LOCATION,
+                                            Manifest.permission.ACCESS_COARSE_LOCATION
+                                        )
+                                    )
+                                },
+                                onLaunchNotifications = {
+                                    if (Build.VERSION.SDK_INT >= 33) {
+                                        notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                }
+                            )
+                        }
+                    )
+                }
+            }
+        }
+
+        // --- LAYER 4: ABOUT SCREEN (Animated Overlay) ---
+        // 🔑 Placing this last ensures it is on top, but the Map stays alive underneath.
+        AnimatedVisibility(
+            visible = showAboutScreen,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background
+            ) {
+                AboutScreen(onBackClick = { showAboutScreen = false })
             }
         }
     }

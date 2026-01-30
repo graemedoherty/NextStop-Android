@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
@@ -20,7 +21,6 @@ import kotlinx.coroutines.flow.asStateFlow
 class StepperViewModel : ViewModel() {
 
     /* ---------------- Navigation State ---------------- */
-
     private val _currentStep = MutableStateFlow(1)
     val currentStep: StateFlow<Int> = _currentStep.asStateFlow()
 
@@ -33,148 +33,184 @@ class StepperViewModel : ViewModel() {
     private val _transportConfirmed = MutableStateFlow(false)
     val transportConfirmed: StateFlow<Boolean> = _transportConfirmed.asStateFlow()
 
-    /* ---------------- Permission State (For Overlay) ---------------- */
-
-    // 🔑 Controls if the Glassmorphism Overlay is visible
+    /* ---------------- Onboarding State ---------------- */
     var showPermissionOverlay by mutableStateOf(false)
         private set
 
-    // 🔑 Controls the text inside the Permission Card
+    var onboardingPage by mutableIntStateOf(0)
+        private set
+
     var permissionTitle by mutableStateOf("")
         private set
     var permissionDescription by mutableStateOf("")
         private set
-    var permissionButtonText by mutableStateOf("Grant Permission")
+    var permissionButtonText by mutableStateOf("")
         private set
 
-    /* ---------------- Permission Logic ---------------- */
+    private fun isPermissionGranted(context: Context, permission: String): Boolean {
+        return ContextCompat.checkSelfPermission(
+            context,
+            permission
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun getOnboardingComplete(context: Context): Boolean {
+        return context.getSharedPreferences("nextstop_prefs", Context.MODE_PRIVATE)
+            .getBoolean("onboarding_finished", false)
+    }
 
     /**
-     * Checks all required permissions and updates the overlay state accordingly.
-     * Call this in JourneyScreen's LaunchedEffect or on app start.
+     * 🔑 THE FIX: Explicitly named parameters to allow 'title = ...' style calls
      */
+    private fun updateUI(title: String, description: String, buttonText: String) {
+        this.permissionTitle = title
+        this.permissionDescription = description
+        this.permissionButtonText = buttonText
+    }
+
     fun checkPermissions(context: Context) {
-        val hasLocation = ContextCompat.checkSelfPermission(
-            context, Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
+        if (getOnboardingComplete(context)) {
+            showPermissionOverlay = false
+            return
+        }
 
+        val hasLocation = isPermissionGranted(context, Manifest.permission.ACCESS_FINE_LOCATION)
         val hasNotifications = if (Build.VERSION.SDK_INT >= 33) {
-            ContextCompat.checkSelfPermission(
-                context, Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
+            isPermissionGranted(context, Manifest.permission.POST_NOTIFICATIONS)
         } else true
-
         val hasOverlay = Settings.canDrawOverlays(context)
 
         when {
-            !hasLocation -> {
-                updatePermissionOverlay(
-                    title = "Location Access",
-                    description = "Next Stop needs your location to track your journey and wake you up before your station.",
-                    buttonText = "Allow Location"
-                )
-            }
+            onboardingPage == 0 -> updateUI(
+                title = "Welcome to Next Stop",
+                description = """
+        Quick Setup Guide.
+        
+        To alert you at just the right moment, Next Stop needs a few quick permissions. 
+        Setup only takes a minute — and then you're good to go.
+        
+        How it works:
+        1. Choose your mode of travel.
+        2. Pick your destination from the dropdown or the interactive map.
+        3. Set your alarm.
+        4. Relax — we'll alert you when you are near your destination station.
+    """.trimIndent(),
+                buttonText = "Get Started"
+            )
 
-            !hasNotifications && Build.VERSION.SDK_INT >= 33 -> {
-                updatePermissionOverlay(
-                    title = "Notifications",
-                    description = "We need permission to send notifications so we can alert you even if your screen is off.",
-                    buttonText = "Allow Notifications"
-                )
-            }
 
-            !hasOverlay -> {
-                updatePermissionOverlay(
-                    title = "Display Over Other Apps",
-                    description = "This allows the alarm to appear on top of other apps (like Google Maps) while you travel.",
-                    buttonText = "Enable Overlay"
-                )
-            }
+            onboardingPage == 1 && !hasLocation -> updateUI(
+                title = "Location Access",
+                description = """
+        We use your location to track your journey and calculate how close you are to your stop.
+        
+        Your location is only used while a trip is active.
+    """.trimIndent(),
+                buttonText = "Allow Location"
+            )
+
+
+            onboardingPage == 2 && !hasNotifications -> updateUI(
+                title = "Notifications",
+                description = "This allows us to keep the tracking service active in the background while you relax or use other apps.",
+                buttonText = "Enable Notifications"
+            )
+
+            onboardingPage == 3 && !hasOverlay -> updateUI(
+                title = "Display Over Other Apps",
+                description = """
+        This allows your arrival alert to appear over apps like Google Maps or on your lock screen,
+        so you never miss it.
+    """.trimIndent(),
+                buttonText = "Enable Overlay"
+            )
+
+
+            onboardingPage == 4 -> updateUI(
+                title = "You're All Set",
+                description = """
+        Everything is ready to go.
+        
+        Choose your mode of transport, pick your destination station, and have a safe journey.
+    """.trimIndent(),
+                buttonText = "Start Your Journey"
+            )
+
 
             else -> {
-                // All permissions granted! Hide the shield.
-                showPermissionOverlay = false
+                if (onboardingPage < 4) {
+                    onboardingPage++
+                    checkPermissions(context)
+                } else {
+                    finishOnboarding(context)
+                }
             }
         }
-    }
-
-    private fun updatePermissionOverlay(title: String, description: String, buttonText: String) {
-        permissionTitle = title
-        permissionDescription = description
-        permissionButtonText = buttonText
         showPermissionOverlay = true
     }
 
-    /**
-     * Called when the user clicks the action button on the PermissionStepCard.
-     */
     fun handlePermissionRequest(
         context: Context,
         onLaunchLocation: () -> Unit,
         onLaunchNotifications: () -> Unit
     ) {
-        when (permissionTitle) {
-            "Location Access" -> onLaunchLocation()
-            "Notifications" -> onLaunchNotifications()
-            "Display Over Other Apps" -> {
+        when (onboardingPage) {
+            0 -> {
+                onboardingPage = 1; checkPermissions(context)
+            }
+
+            1 -> onLaunchLocation()
+            2 -> onLaunchNotifications()
+            3 -> {
                 val intent = Intent(
                     Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                     Uri.parse("package:${context.packageName}")
                 )
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(intent)
+                context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             }
+
+            4 -> finishOnboarding(context)
         }
     }
 
-    /* ---------------- Navigation ---------------- */
-
-    fun resetToStep(step: Int) {
-        _currentStep.value = step
-        if (step == 1) {
-            _transportConfirmed.value = false
-            _selectedStation.value = null
-        }
+    private fun finishOnboarding(context: Context) {
+        context.getSharedPreferences("nextstop_prefs", Context.MODE_PRIVATE)
+            .edit().putBoolean("onboarding_finished", true).apply()
+        showPermissionOverlay = false
     }
 
+    /* ---------------- Standard Navigation ---------------- */
     fun nextStep() {
         if (_currentStep.value == 1 && _selectedTransport.value != null) {
             _transportConfirmed.value = true
         }
-        if (_currentStep.value < 4) {
-            _currentStep.value += 1
-        }
+        if (_currentStep.value < 4) _currentStep.value++
+    }
+
+    fun resetToStep(s: Int) {
+        _currentStep.value = s
+        if (s <= 2) clearStation()
+        if (s == 1) _transportConfirmed.value = false
     }
 
     fun goBack() {
         _currentStep.value = (_currentStep.value - 1).coerceAtLeast(1)
+        if (_currentStep.value <= 2) clearStation()
     }
 
-    /* ---------------- Selection ---------------- */
-
-    fun selectTransport(transport: String) {
-        if (_selectedTransport.value != transport) {
-            _selectedTransport.value = transport
-            _selectedStation.value = null
-            _transportConfirmed.value = false
-        }
+    fun selectTransport(t: String) {
+        _selectedTransport.value = t
+        _transportConfirmed.value = false
+        clearStation()
     }
 
-    fun selectStation(stationName: String, latitude: Double, longitude: Double) {
-        _selectedStation.value = Station(
-            name = stationName,
-            type = _selectedTransport.value.orEmpty(),
-            latitude = latitude,
-            longitude = longitude,
-            distance = 0
-        )
+    fun selectStation(n: String, lat: Double, lon: Double) {
+        _selectedStation.value = Station(n, _selectedTransport.value.orEmpty(), lat, lon, 0)
     }
 
     fun clearStation() {
         _selectedStation.value = null
     }
-
-    /* ---------------- Reset ---------------- */
 
     fun reset() {
         _currentStep.value = 1

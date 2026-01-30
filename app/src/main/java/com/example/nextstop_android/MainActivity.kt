@@ -85,8 +85,6 @@ class MainActivity : ComponentActivity() {
                     color = Color.Black
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        // 🔑 THE FIX: JourneyScreen is present but INVISIBLE until splash starts
-                        // This prevents the "flicker" while still letting the Map warm up
                         Box(modifier = Modifier.graphicsLayer {
                             alpha = if (isMounted) 1f else 0f
                         }) {
@@ -98,7 +96,7 @@ class MainActivity : ComponentActivity() {
 
                         AnimatedVisibility(
                             visible = showCustomSplash,
-                            enter = fadeIn(animationSpec = tween(0)), // Instant enter
+                            enter = fadeIn(animationSpec = tween(0)),
                             exit = slideOutHorizontally(
                                 targetOffsetX = { -it },
                                 animationSpec = tween(1000, easing = EaseInOutQuart)
@@ -107,7 +105,6 @@ class MainActivity : ComponentActivity() {
                             if (isMounted) {
                                 LEDMatrixSplashScreen(onTimeout = { showCustomSplash = false })
                             } else {
-                                // 🔑 Matches System Splash exactly during the handover frame
                                 Box(modifier = Modifier.fillMaxSize())
                             }
                         }
