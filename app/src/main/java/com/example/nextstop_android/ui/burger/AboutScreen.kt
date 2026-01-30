@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -48,6 +49,9 @@ fun AboutScreen(
 ) {
     val context = LocalContext.current
 
+    // 🔑 Check if the system is currently in Dark Mode
+    val isDark = isSystemInDarkTheme()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -76,9 +80,11 @@ fun AboutScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // App Icon
+            // 🔑 App Icon: Switches dynamically based on theme
             Image(
-                painter = painterResource(id = R.drawable.white_app_icon),
+                painter = painterResource(
+                    id = if (isDark) R.drawable.white_app_icon else R.drawable.black_app_icon
+                ),
                 contentDescription = "NextStop Logo",
                 modifier = Modifier.size(100.dp)
             )
@@ -99,7 +105,7 @@ fun AboutScreen(
             Text(
                 text = "Version 1.1.0-beta",
                 fontSize = 16.sp,
-                color = Color(0xFF6F66E3), // Your purple color
+                color = Color(0xFF6F66E3),
                 fontWeight = FontWeight.Medium
             )
 
@@ -145,10 +151,6 @@ fun AboutScreen(
                 }
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-
-
             Spacer(modifier = Modifier.height(32.dp))
 
             // Legal Section
@@ -156,11 +158,10 @@ fun AboutScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             LegalLink("Privacy Policy") {
-                val intent =
-                    Intent(
-                        Intent.ACTION_VIEW,
-                        Uri.parse("https://graemedoherty.github.io/NextStop-Android/legal/privacy.html")
-                    )
+                val intent = Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://graemedoherty.github.io/NextStop-Android/legal/privacy.html")
+                )
                 context.startActivity(intent)
             }
 
@@ -205,6 +206,8 @@ fun AboutScreen(
     }
 }
 
+/* --- Helper Composables --- */
+
 @Composable
 private fun SectionTitle(text: String) {
     Text(
@@ -243,8 +246,7 @@ private fun ContactCard(
         tonalElevation = 2.dp
     ) {
         Row(
-            modifier = Modifier
-                .padding(16.dp),
+            modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -253,9 +255,7 @@ private fun ContactCard(
                 tint = Color(0xFF6F66E3),
                 modifier = Modifier.size(24.dp)
             )
-
             Spacer(modifier = Modifier.width(16.dp))
-
             Column {
                 Text(
                     text = label,
@@ -274,10 +274,7 @@ private fun ContactCard(
 }
 
 @Composable
-private fun LegalLink(
-    text: String,
-    onClick: () -> Unit
-) {
+private fun LegalLink(text: String, onClick: () -> Unit) {
     Text(
         text = text,
         fontSize = 15.sp,

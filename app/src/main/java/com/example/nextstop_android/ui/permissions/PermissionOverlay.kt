@@ -7,12 +7,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 
 @Composable
 fun PermissionOverlay(
+    pageIndex: Int,
     title: String,
     description: String,
     buttonText: String,
@@ -21,24 +20,16 @@ fun PermissionOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .clickable(enabled = true, onClick = {})
+            .background(Color.Black.copy(alpha = 0.85f))
+            .clickable(enabled = true, onClick = {}),
+        contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.9f))
-                .blur(12.dp)
+        PermissionStepCard(
+            pageIndex = pageIndex,
+            title = title,
+            description = description,
+            buttonText = buttonText,
+            onAction = onAction
         )
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            PermissionStepCard(
-                title = title,
-                description = description,
-                buttonText = buttonText,
-                onAction = onAction
-            )
-        }
     }
 }

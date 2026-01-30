@@ -23,6 +23,13 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(MapUiState())
     val uiState: StateFlow<MapUiState> = _uiState
 
+    /**
+     * 🔑 PERSISTENCE FIX: This flag survives navigation to other screens.
+     * It ensures the map only auto-centers on the user's location once per app session
+     * (or until the alarm/state is reset).
+     */
+    var hasInitialCenterPerformed = false
+
     private val distanceReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent == null) return
@@ -47,7 +54,8 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
                     updateUserLocation(it.latitude, it.longitude)
                 }
             }
-        } catch (e: SecurityException) { /* Handle missing permissions if necessary */
+        } catch (e: SecurityException) {
+            /* Handle missing permissions if necessary */
         }
 
         ContextCompat.registerReceiver(
@@ -129,6 +137,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun resetAllState() {
+        hasInitialCenterPerformed = false // 🔑 Reset the flag when the app state clears
         _uiState.update { MapUiState() }
     }
 
