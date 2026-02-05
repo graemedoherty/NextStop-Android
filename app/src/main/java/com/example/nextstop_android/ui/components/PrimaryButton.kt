@@ -1,5 +1,6 @@
 package com.example.nextstop_android.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,17 +21,16 @@ fun PrimaryButton(
     onClick: () -> Unit,
     enabled: Boolean = true,
     modifier: Modifier = Modifier,
-    // 🎨 New parameter to control text color when disabled
     disabledContentColor: Color = Color.Unspecified
 ) {
     val isDark = isSystemInDarkTheme()
+    val brandPurple = Color(0xFF6F66E3)
+    val softPurpleBg = brandPurple.copy(alpha = 0.40f) // Diluted background
 
-    // Fallback logic if no color is provided:
-    // Light mode defaults to Purple, Dark mode defaults to Gray
     val finalDisabledTextColor = if (disabledContentColor != Color.Unspecified) {
         disabledContentColor
     } else {
-        if (isDark) Color.Gray else Color(0xFF6F66E3)
+        if (isDark) Color.Gray else brandPurple.copy(alpha = 0.4f)
     }
 
     Button(
@@ -38,21 +38,21 @@ fun PrimaryButton(
         enabled = enabled,
         modifier = modifier
             .fillMaxWidth()
-            .height(44.dp),
-        shape = RoundedCornerShape(12.dp),
+            .height(48.dp), // 📏 Unified Height
+        shape = RoundedCornerShape(12.dp), // 📏 Unified Radius
+        border = if (enabled) BorderStroke(2.dp, brandPurple) else null, // 📏 Unified Border
         colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF6F66E3),
-            contentColor = Color.White,
-
-            // Still transparent so the parent Box's background shows through
-            disabledContainerColor = Color.Transparent,
-            // ⚡ Use our dynamic color here
+            containerColor = softPurpleBg,
+            contentColor = brandPurple,
+            disabledContainerColor = if (isDark) Color.White.copy(alpha = 0.05f) else Color.Black.copy(
+                alpha = 0.05f
+            ),
             disabledContentColor = finalDisabledTextColor
         )
     ) {
         Text(
             text = text,
-            fontSize = 16.sp,
+            fontSize = 15.sp, // Unified font size
             fontWeight = FontWeight.Bold
         )
     }

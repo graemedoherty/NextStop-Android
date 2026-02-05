@@ -1,8 +1,6 @@
 package com.example.nextstop_android.ui.stepper
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,20 +34,19 @@ import com.example.nextstop_android.ui.components.PrimaryButton
 fun Step1Screen(
     selectedTransport: String?,
     onTransportSelected: (String) -> Unit,
-    onNext: () -> Unit
+    onNext: () -> Unit,
+    onBack: () -> Unit = {} // Keep as optional to prevent StepperScreen errors
 ) {
     val isDark = isSystemInDarkTheme()
 
-    // 🎨 Updated Colors
-    // Light Mode: Off-white (#F5F5F5) | Dark Mode: Onyx (#080808)
+    // 🎨 UI Palette
     val unselectedContainer = if (isDark) Color(0xFF080808) else Color(0xFFF5F5F5)
-
-    // Borders: Subtle contrast for both modes
     val unselectedBorder = if (isDark) Color(0xFF1A1A1A) else Color(0xFFE0E0E0)
-
-    // Text/Icon colors
     val contentColor = if (isDark) Color.White else Color(0xFF2E2E2E)
-    val selectedPurple = Color(0xFF6F66E3)
+    val themePurple = Color(0xFF6F66E3)
+
+    // Bunq-style diluted background (12% opacity)
+    val softPurpleBg = themePurple.copy(alpha = 0.12f)
 
     Column(
         modifier = Modifier
@@ -57,7 +54,6 @@ fun Step1Screen(
             .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-
         // --- TRANSPORT SELECTION ROW ---
         Row(
             modifier = Modifier
@@ -81,24 +77,25 @@ fun Step1Screen(
                     shape = RoundedCornerShape(12.dp),
                     contentPadding = PaddingValues(4.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = if (isSelected) selectedPurple else unselectedContainer
+                        // 🔑 Styling Tweak: Use soft purple when selected
+                        containerColor = if (isSelected) softPurpleBg else unselectedContainer
                     ),
                     border = BorderStroke(
-                        width = if (isSelected) 2.dp else 1.dp,
-                        color = if (isSelected) selectedPurple else unselectedBorder
+                        // 🔑 Styling Tweak: Thicker 3.dp border
+                        width = if (isSelected) 3.dp else 1.dp,
+                        color = if (isSelected) themePurple else unselectedBorder
                     )
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        // Checkmark indicator to confirm selection
                         Box(modifier = Modifier.height(16.dp)) {
                             if (isSelected) {
                                 Icon(
                                     imageVector = Icons.Default.Check,
                                     contentDescription = null,
-                                    tint = Color.White,
+                                    tint = themePurple, // 🔑 Icon matches theme
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -108,34 +105,24 @@ fun Step1Screen(
                             painter = painterResource(id = iconResource),
                             contentDescription = mode,
                             modifier = Modifier.size(32.dp),
-                            tint = if (isSelected) Color.White else contentColor
+                            tint = if (isSelected) themePurple else contentColor
                         )
 
                         Text(
                             text = mode,
                             fontSize = 12.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) Color.White else contentColor
+                            color = if (isSelected) themePurple else contentColor
                         )
                     }
                 }
             }
         }
 
-        // --- THE NEXT BUTTON ---
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
-                .background(
-                    color = if (selectedTransport != null) selectedPurple else unselectedContainer,
-                    shape = RoundedCornerShape(12.dp)
-                )
-                .border(
-                    width = 1.dp,
-                    color = if (selectedTransport != null) Color.Transparent else unselectedBorder,
-                    shape = RoundedCornerShape(12.dp)
-                ),
+                .height(48.dp),
             contentAlignment = Alignment.Center
         ) {
             PrimaryButton(

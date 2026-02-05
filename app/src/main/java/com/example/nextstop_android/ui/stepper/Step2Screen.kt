@@ -13,12 +13,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -45,6 +42,8 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.example.nextstop_android.data.StationDataLoader
 import com.example.nextstop_android.model.Station
+import com.example.nextstop_android.ui.components.PrimaryButton
+import com.example.nextstop_android.ui.components.SecondaryButton
 import com.example.nextstop_android.ui.maps.MapViewModel
 import com.example.nextstop_android.ui.stations.StationViewModel
 
@@ -64,7 +63,6 @@ fun Step2Screen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val dataLoader = remember { StationDataLoader(context) }
 
-    // 🎨 Theme-aware colors
     val themePurple = Color(0xFF6F66E3)
     val onSurfaceText = MaterialTheme.colorScheme.onSurface
     val onSurfaceVariantText = MaterialTheme.colorScheme.onSurfaceVariant
@@ -93,6 +91,7 @@ fun Step2Screen(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
+            // --- TOP CONTENT ---
             Box(modifier = Modifier.fillMaxWidth()) {
                 if (savedStation == null) {
                     OutlinedTextField(
@@ -101,10 +100,7 @@ fun Step2Screen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
-                        textStyle = TextStyle(
-                            fontSize = 16.sp,
-                            color = onSurfaceText // 🔑 Adaptive color
-                        ),
+                        textStyle = TextStyle(fontSize = 16.sp, color = onSurfaceText),
                         placeholder = {
                             Text(
                                 "Search Station...",
@@ -112,27 +108,23 @@ fun Step2Screen(
                                 fontSize = 16.sp
                             )
                         },
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(12.dp),
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = onSurfaceText,
-                            unfocusedTextColor = onSurfaceText,
                             cursorColor = themePurple,
                             focusedBorderColor = themePurple,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
                         )
                     )
                 } else {
+                    // 🔑 Removed border, kept the background color
                     Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = themePurple.copy(alpha = 0.1f), // 🔑 Soft purple tint
-                        border = BorderStroke(1.dp, themePurple),
+                        shape = RoundedCornerShape(12.dp),
+                        color = themePurple.copy(alpha = 0.12f),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -140,11 +132,12 @@ fun Step2Screen(
                                 Text(
                                     text = "Selected Station:",
                                     fontSize = 10.sp,
-                                    color = onSurfaceVariantText
+                                    color = themePurple,
+                                    fontWeight = FontWeight.Bold
                                 )
                                 Text(
                                     text = savedStation.name,
-                                    fontSize = 15.sp,
+                                    fontSize = 16.sp,
                                     color = onSurfaceText,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -156,25 +149,22 @@ fun Step2Screen(
                     }
                 }
 
-                // 🎯 Dropdown Popup
+                // --- DROPDOWN ---
                 if (filteredStations.isNotEmpty() && savedStation == null) {
                     Popup(
                         alignment = Alignment.TopCenter,
                         offset = IntOffset(0, 165),
-                        properties = PopupProperties(
-                            focusable = false,
-                            dismissOnClickOutside = true
-                        )
+                        properties = PopupProperties(dismissOnClickOutside = true)
                     ) {
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 4.dp)
                                 .heightIn(max = 200.dp),
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(12.dp),
                             tonalElevation = 8.dp,
                             shadowElevation = 10.dp,
-                            color = MaterialTheme.colorScheme.surface, // 🔑 Adaptive popup background
+                            color = MaterialTheme.colorScheme.surface,
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                         ) {
                             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
@@ -195,7 +185,7 @@ fun Step2Screen(
                                             text = stationName,
                                             modifier = Modifier.fillMaxWidth(),
                                             fontSize = 14.sp,
-                                            color = onSurfaceText, // 🔑 Adaptive text
+                                            color = onSurfaceText,
                                             textAlign = TextAlign.Start
                                         )
                                     }
@@ -211,43 +201,26 @@ fun Step2Screen(
                 }
             }
 
-            // ───────────────── NAVIGATION ─────────────────
+            // --- NAVIGATION ---
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // 🔑 BACK BUTTON: Purple text and border for high visibility
-                OutlinedButton(
+                // 🔑 Now using your unified SecondaryButton component
+                SecondaryButton(
+                    text = "Back",
                     onClick = onBack,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp),
-                    border = BorderStroke(1.dp, themePurple),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = themePurple)
-                ) {
-                    Text("Back", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                }
+                    modifier = Modifier.weight(1f)
+                )
 
-                // 🔑 NEXT BUTTON: Solid Purple with White text
-                Button(
-                    onClick = { onNext() },
+                PrimaryButton(
+                    text = "Next",
                     enabled = savedStation != null,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = themePurple,
-                        contentColor = Color.White,
-                        disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
-                        disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                    ),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text("Next", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                }
+                    onClick = onNext,
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
