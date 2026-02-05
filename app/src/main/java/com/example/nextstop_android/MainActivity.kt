@@ -48,7 +48,8 @@ class MainActivity : ComponentActivity() {
     private val stopReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == LocationTrackingService.ACTION_ALARM_STOPPED) {
-                stepperViewModel.reset()
+                stepperViewModel.reset() // Clears Stepper's station
+                mapViewModel.resetAllState() // Clears Map's station and camera lock
             }
         }
     }
@@ -58,11 +59,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
+
         splashScreen.setKeepOnScreenCondition { false }
         window.setBackgroundDrawableResource(android.R.color.black)
 
         lifecycleScope.launch(Dispatchers.IO) {
-            MobileAds.initialize(this@MainActivity) {}
+            try {
+                MobileAds.initialize(this@MainActivity) {}
+            } catch (e: Exception) {
+                // Silently fail
+            }
         }
 
         val filter = IntentFilter(LocationTrackingService.ACTION_ALARM_STOPPED)
@@ -73,6 +79,7 @@ class MainActivity : ComponentActivity() {
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
 
+        // Process the starting intent
         handleIntent(intent)
 
         setContent {
@@ -99,8 +106,8 @@ class MainActivity : ComponentActivity() {
                             enter = fadeIn(animationSpec = tween(0)),
                             exit = slideOutHorizontally(
                                 targetOffsetX = { -it },
-                                animationSpec = tween(1000, easing = EaseInOutQuart)
-                            ) + fadeOut(animationSpec = tween(800))
+                                animationSpec = tween(600, easing = EaseInOutQuart)
+                            ) + fadeOut(animationSpec = tween(400))
                         ) {
                             if (isMounted) {
                                 LEDMatrixSplashScreen(onTimeout = { showCustomSplash = false })
@@ -124,6 +131,8 @@ class MainActivity : ComponentActivity() {
         val screenToLoad = intent?.getStringExtra("SCREEN_TO_LOAD")
         if (screenToLoad == "JOURNEY_SCREEN") {
             stepperViewModel.resetToStep(4)
+            // 🔥 FIX: Consume the extra immediately so it doesn't re-fire on re-creation
+            intent.removeExtra("SCREEN_TO_LOAD")
         }
     }
 
@@ -132,6 +141,7 @@ class MainActivity : ComponentActivity() {
         try {
             unregisterReceiver(stopReceiver)
         } catch (e: Exception) {
+            // Ignore
         }
     }
 }

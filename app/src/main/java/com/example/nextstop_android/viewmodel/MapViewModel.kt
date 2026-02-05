@@ -23,20 +23,26 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(MapUiState())
     val uiState: StateFlow<MapUiState> = _uiState
 
-    /**
-     * 🔑 PERSISTENCE FIX: This flag survives navigation to other screens.
-     * It ensures the map only auto-centers on the user's location once per app session
-     * (or until the alarm/state is reset).
-     */
+    // ⚡ Controls the "One-time" snap to user location
     var hasInitialCenterPerformed = false
+
+    // 🔥 FIX: Flag to prevent broadcasts from overwriting the reset
+    private var isResetting = false
 
     private val distanceReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
+            // 🔥 FIX: Ignore broadcasts during reset
+            if (isResetting) return
+
             if (intent == null) return
             val distance = intent.getIntExtra("distance", -1)
             val lat = intent.getDoubleExtra("user_lat", 0.0)
             val lng = intent.getDoubleExtra("user_lng", 0.0)
-            updateTracking(lat, lng, distance)
+
+            // 🔥 FIX: Only update tracking if we actually have an active alarm
+            if (_uiState.value.alarmActive) {
+                updateTracking(lat, lng, distance)
+            }
         }
     }
 
@@ -47,15 +53,31 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     init {
-        // 🔑 SILENT WARM-UP: Get location immediately while splash is scrolling
+        // 🔥 CRITICAL FIX: Force kill any lingering service FIRST
+        // This ensures no old broadcasts can come through
+        val killServiceIntent = Intent(appContext, LocationTrackingService::class.java).apply {
+            action = LocationTrackingService.ACTION_STOP
+        }
+        try {
+            appContext.startService(killServiceIntent)
+        } catch (e: Exception) {
+            // Service might not be running, that's fine
+        }
+
+        // 🔥 FIX: Clear everything on fresh start
+        resetAllState()
+
         try {
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                 location?.let {
-                    updateUserLocation(it.latitude, it.longitude)
+                    // 🔥 FIX: Only set if we don't already have a location AND we're not resetting
+                    if (_uiState.value.userLocation == null && !isResetting) {
+                        updateUserLocation(it.latitude, it.longitude)
+                    }
                 }
             }
         } catch (e: SecurityException) {
-            /* Handle missing permissions if necessary */
+            // Permission handled in UI
         }
 
         ContextCompat.registerReceiver(
@@ -74,7 +96,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setStations(stations: List<Station>) {
-        _uiState.update { it.copy(stations = stations, isLoading = false, error = null) }
+        _uiState.update { it.copy(stations = stations, isStationsLoading = false, error = null) }
     }
 
     fun setLoading(isLoading: Boolean) {
@@ -96,7 +118,23 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun clearDestination() {
+        hasInitialCenterPerformed = false
+        _uiState.update { currentState ->
+            currentState.copy(
+                selectedStation = null,
+                destinationLocation = null,
+                distanceToDestination = -1,
+                alarmArmed = false,
+                alarmActive = false,
+                alarmArrived = false,
+                stations = emptyList()
+            )
+        }
+    }
+
     fun startAlarm(station: Station) {
+        isResetting = false // Re-enable broadcasts
         _uiState.update {
             it.copy(
                 selectedStation = station,
@@ -111,12 +149,18 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updateUserLocation(latitude: Double, longitude: Double) {
+        // 🔥 FIX: Don't update location if we're in the middle of resetting
+        if (isResetting) return
+
         _uiState.update {
             it.copy(userLocation = latitude to longitude)
         }
     }
 
     fun updateTracking(latitude: Double, longitude: Double, distanceMeters: Int) {
+        // 🔥 FIX: Don't update tracking if we're resetting or alarm isn't active
+        if (isResetting || !_uiState.value.alarmActive) return
+
         val arrived = distanceMeters in 0..LocationTrackingService.ARRIVAL_THRESHOLD_METERS
         _uiState.update {
             it.copy(
@@ -136,9 +180,21 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         stepperViewModel?.reset()
     }
 
-    private fun resetAllState() {
-        hasInitialCenterPerformed = false // 🔑 Reset the flag when the app state clears
-        _uiState.update { MapUiState() }
+    fun resetAllState() {
+        // 🔥 FIX: Set flag to block any incoming broadcasts during reset
+        isResetting = true
+
+        hasInitialCenterPerformed = false
+
+        // 🔥 CRITICAL FIX: Don't preserve old location - start completely fresh
+        // The old code was preserving userLocation, which kept the map centered on the old spot
+        _uiState.value = MapUiState()
+
+        // 🔥 FIX: Allow broadcasts again after a short delay
+        // This prevents race conditions with service broadcasts
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            isResetting = false
+        }, 1000) // Increased to 1 second for extra safety
     }
 
     override fun onCleared() {
@@ -147,6 +203,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             appContext.unregisterReceiver(distanceReceiver)
             appContext.unregisterReceiver(alarmStoppedReceiver)
         } catch (_: Exception) {
+            // Ignore
         }
     }
 }

@@ -42,6 +42,9 @@ class LocationTrackingService : Service() {
     private var alarmTriggered = false
     private var lastNotifiedDistance = -1
 
+    // 🔥 FIX: Flag to prevent broadcasts after service is stopped
+    private var isStopped = false
+
     companion object {
         const val CHANNEL_ID = "arrival_alarm_channel"
         const val NOTIFICATION_ID = 1
@@ -63,12 +66,16 @@ class LocationTrackingService : Service() {
         super.onCreate()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         createNotificationChannel()
+        isStopped = false
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
 
             ACTION_SET_DESTINATION -> {
+                // 🔥 FIX: Reset the stopped flag when starting new tracking
+                isStopped = false
+
                 destinationLat = intent.getDoubleExtra(EXTRA_DESTINATION_LAT, 0.0)
                 destinationLng = intent.getDoubleExtra(EXTRA_DESTINATION_LNG, 0.0)
                 destinationName = intent.getStringExtra(EXTRA_DESTINATION_NAME)
@@ -124,6 +131,9 @@ class LocationTrackingService : Service() {
     }
 
     private fun handleLocation(location: Location) {
+        // 🔥 CRITICAL FIX: Don't process or broadcast if service is stopped
+        if (isStopped) return
+
         val lat = destinationLat ?: return
         val lng = destinationLng ?: return
 
@@ -134,15 +144,18 @@ class LocationTrackingService : Service() {
             lng
         )
 
-        // 📡 Broadcast distance updates to UI
-        sendBroadcast(
-            Intent(ACTION_DISTANCE_UPDATE).apply {
-                setPackage(packageName)
-                putExtra("distance", distance)
-                putExtra("user_lat", location.latitude)
-                putExtra("user_lng", location.longitude)
-            }
-        )
+        // 🔥 FIX: Double-check we're not stopped before broadcasting
+        if (!isStopped) {
+            // 📡 Broadcast distance updates to UI
+            sendBroadcast(
+                Intent(ACTION_DISTANCE_UPDATE).apply {
+                    setPackage(packageName)
+                    putExtra("distance", distance)
+                    putExtra("user_lat", location.latitude)
+                    putExtra("user_lng", location.longitude)
+                }
+            )
+        }
 
         when {
             distance <= ARRIVAL_THRESHOLD_METERS && !alarmTriggered -> {
@@ -269,6 +282,23 @@ class LocationTrackingService : Service() {
     private fun stopEverything() {
         Log.e("ALARM", "🛑 Tracking stopped")
 
+        // 🔥 CRITICAL FIX: Set flag IMMEDIATELY to prevent any more broadcasts
+        isStopped = true
+
+        // 🔥 FIX: Stop location updates FIRST before clearing data
+        locationCallback?.let {
+            fusedLocationClient.removeLocationUpdates(it)
+        }
+        locationCallback = null
+
+        // 🔥 FIX: Clear destination data BEFORE broadcasting stopped event
+        destinationLat = null
+        destinationLng = null
+        destinationName = null
+        alarmTriggered = false
+        lastNotifiedDistance = -1
+
+        // Now send the stopped broadcast (with no destination data to leak)
         sendBroadcast(
             Intent(ACTION_ALARM_STOPPED).apply {
                 setPackage(packageName)
@@ -276,22 +306,17 @@ class LocationTrackingService : Service() {
             }
         )
 
-        locationCallback?.let {
-            fusedLocationClient.removeLocationUpdates(it)
-        }
-
-        destinationLat = null
-        destinationLng = null
-        destinationName = null
-        alarmTriggered = false
-        lastNotifiedDistance = -1
-
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        // 🔥 FIX: Ensure we're marked as stopped
+        isStopped = true
+        locationCallback?.let {
+            fusedLocationClient.removeLocationUpdates(it)
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

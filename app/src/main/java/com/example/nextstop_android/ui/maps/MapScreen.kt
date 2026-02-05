@@ -12,7 +12,6 @@ import android.graphics.PorterDuffColorFilter
 import android.graphics.RectF
 import android.graphics.Typeface
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -21,7 +20,16 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -40,8 +48,22 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.model.*
-import com.google.maps.android.compose.*
+import com.google.android.gms.maps.model.BitmapDescriptor
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
+import com.google.android.gms.maps.model.MapStyleOptions
+import com.google.maps.android.compose.Circle
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerInfoWindow
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
+import com.google.maps.android.compose.rememberMarkerState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 
@@ -83,33 +105,17 @@ private fun infoWindowBitmap(title: String, dark: Boolean): Bitmap {
     val canvas = Canvas(bitmap)
     val bgColor = if (dark) 0xFF1E1E1E.toInt() else 0xFFFFFFFF.toInt()
     val textColor = if (dark) android.graphics.Color.WHITE else android.graphics.Color.BLACK
-    val accent = 0xFF6F66E3.toInt()
-    val cornerRadius = 32f
     val bgPaint = Paint().apply { color = bgColor; isAntiAlias = true }
-    canvas.drawRoundRect(
-        RectF(0f, 0f, width.toFloat(), height.toFloat()),
-        cornerRadius,
-        cornerRadius,
-        bgPaint
-    )
-
+    canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), 32f, 32f, bgPaint)
     val titlePaint = Paint().apply {
-        color = textColor
-        textSize = 46f
-        typeface = Typeface.DEFAULT_BOLD
-        isAntiAlias = true
+        color = textColor; textSize = 46f; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true
     }
     canvas.drawText(title, 40f, 100f, titlePaint)
-
-    val buttonPaint = Paint().apply { color = accent; isAntiAlias = true }
+    val buttonPaint = Paint().apply { color = 0xFF6F66E3.toInt(); isAntiAlias = true }
     canvas.drawRoundRect(RectF(40f, 140f, width - 40f, 205f), 20f, 20f, buttonPaint)
-
     val buttonTextPaint = Paint().apply {
-        color = android.graphics.Color.WHITE
-        textAlign = Paint.Align.CENTER
-        textSize = 32f
-        typeface = Typeface.DEFAULT_BOLD
-        isAntiAlias = true
+        color = android.graphics.Color.WHITE; textAlign = Paint.Align.CENTER; textSize =
+        32f; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true
     }
     canvas.drawText("TAP TO SELECT", width / 2f, 185f, buttonTextPaint)
     return bitmap
@@ -131,23 +137,19 @@ private fun coreDotIcon(): BitmapDescriptor {
 
 @Composable
 fun PulsatingLocationMarker(position: LatLng) {
-    val infiniteTransition = rememberInfiniteTransition(label = "PulseTransition")
+    val infiniteTransition = rememberInfiniteTransition(label = "Pulse")
     val dotIcon = remember { coreDotIcon() }
     val scale by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2500, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "ScaleAnimation"
+        0f,
+        1f,
+        infiniteRepeatable(tween(2500, easing = LinearEasing)),
+        label = "Scale"
     )
     val alpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f, targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2500, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "AlphaAnimation"
+        0.4f,
+        0f,
+        infiniteRepeatable(tween(2500, easing = LinearEasing)),
+        label = "Alpha"
     )
     Circle(
         center = position,
@@ -168,21 +170,13 @@ private fun StationMarker(
 ) {
     if (icon == null) return
     val markerState = rememberMarkerState(position = position)
-    MarkerInfoWindow(
-        state = markerState,
-        icon = icon,
-        onInfoWindowClick = { onSelect() }
-    ) {
-        Image(
-            bitmap = remember(title, darkTheme) {
-                infoWindowBitmap(
-                    title,
-                    darkTheme
-                )
-            }.asImageBitmap(),
-            contentDescription = null,
-            modifier = Modifier.width(320.dp)
-        )
+    MarkerInfoWindow(state = markerState, icon = icon, onInfoWindowClick = { onSelect() }) {
+        Image(bitmap = remember(title, darkTheme) {
+            infoWindowBitmap(
+                title,
+                darkTheme
+            )
+        }.asImageBitmap(), contentDescription = null, modifier = Modifier.width(320.dp))
     }
 }
 
@@ -197,12 +191,14 @@ fun MapsScreen(
     val context = LocalContext.current
     val uiState by mapViewModel.uiState.collectAsState()
     val darkTheme = isSystemInDarkTheme()
-
     val stationViewModel = viewModel<StationViewModel>(factory = StationViewModelFactory(context))
 
     val isOverlayShowing = stepperViewModel.showPermissionOverlay
     val selectedTransport by stepperViewModel.selectedTransport.collectAsState()
     val transportConfirmed by stepperViewModel.transportConfirmed.collectAsState()
+
+    // ⚡ GATE: Temporarily lock camera to User Location on launch
+    var isCameraLockedToUser by remember { mutableStateOf(true) }
 
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
@@ -212,14 +208,13 @@ fun MapsScreen(
             Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
         if (hasPermission && !isOverlayShowing) {
-            val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 4000).build()
+            val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 2000)
+                .setMinUpdateIntervalMillis(1000)
+                .build()
             val callback = object : LocationCallback() {
                 override fun onLocationResult(result: LocationResult) {
                     result.lastLocation?.let {
-                        mapViewModel.updateUserLocation(
-                            it.latitude,
-                            it.longitude
-                        )
+                        mapViewModel.updateUserLocation(it.latitude, it.longitude)
                     }
                 }
             }
@@ -232,12 +227,46 @@ fun MapsScreen(
         } else onDispose { }
     }
 
-    // 🔑 rememberCameraPositionState uses rememberSaveable internally,
-    // but its initial 'position' block only runs the VERY first time the state is created.
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(LatLng(53.3498, -6.2603), 7f)
     }
 
+    val userLatLng = uiState.userLocation?.let { LatLng(it.first, it.second) }
+
+    // 🔥 FIX: Show destination if it exists (selected OR alarm active)
+    // This preserves the original behavior where selecting a station shows it immediately
+    val destinationLatLng = uiState.destinationLocation?.let {
+        LatLng(it.first, it.second)
+    }
+
+    // 🔥 CRITICAL FIX: Only snap to user location on FIRST valid GPS reading
+    LaunchedEffect(userLatLng) {
+        if (userLatLng != null && !mapViewModel.hasInitialCenterPerformed) {
+            cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(userLatLng, 15f))
+            mapViewModel.hasInitialCenterPerformed = true
+
+            // Wait 2 seconds for GPS to stabilize before allowing destination panning
+            delay(2000)
+            isCameraLockedToUser = false
+        }
+    }
+
+    // 🔥 FIX: Pan to show both user and destination when destination is selected
+    // But ONLY if we're not in the initial lock period AND destination actually exists
+    LaunchedEffect(userLatLng, destinationLatLng, isCameraLockedToUser) {
+        if (!isCameraLockedToUser &&
+            userLatLng != null &&
+            destinationLatLng != null
+        ) {
+            val bounds = LatLngBounds.Builder()
+                .include(userLatLng)
+                .include(destinationLatLng)
+                .build()
+            cameraPositionState.animate(CameraUpdateFactory.newLatLngBounds(bounds, 300), 1000)
+        }
+    }
+
+    // --- Station Loading ---
     LaunchedEffect(selectedTransport, transportConfirmed) {
         if (transportConfirmed && selectedTransport != null) {
             stationViewModel.loadStations(selectedTransport!!)
@@ -246,29 +275,6 @@ fun MapsScreen(
 
     val visibleStations by stationViewModel.visibleStations.collectAsState()
     LaunchedEffect(visibleStations) { mapViewModel.setStations(visibleStations) }
-
-    val userLatLng = uiState.userLocation?.let { LatLng(it.first, it.second) }
-    val destinationLatLng = uiState.destinationLocation?.let { LatLng(it.first, it.second) }
-
-    // 🔑 PERSISTENT AUTO-CENTER: Move 'hasCenteredOnUser' logic to ViewModel
-    // This prevents the map from "snapping" back to the user when returning from About screen.
-    LaunchedEffect(userLatLng) {
-        if (userLatLng != null && !mapViewModel.hasInitialCenterPerformed && destinationLatLng == null) {
-            mapViewModel.hasInitialCenterPerformed = true
-            cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(userLatLng, 15f), 1000)
-        }
-    }
-
-    // AUTO-FIT: Only triggers when a destination is actually selected
-    LaunchedEffect(destinationLatLng) {
-        if (userLatLng != null && destinationLatLng != null) {
-            val bounds = LatLngBounds.Builder()
-                .include(userLatLng)
-                .include(destinationLatLng)
-                .build()
-            cameraPositionState.animate(CameraUpdateFactory.newLatLngBounds(bounds, 250), 1000)
-        }
-    }
 
     LaunchedEffect(transportConfirmed) {
         if (transportConfirmed) {
@@ -303,39 +309,43 @@ fun MapsScreen(
                 null
             }
         ),
-        uiSettings = MapUiSettings(myLocationButtonEnabled = true, zoomControlsEnabled = false)
+        uiSettings = MapUiSettings(myLocationButtonEnabled = false, zoomControlsEnabled = false)
     ) {
+        // Always show user location if available
         userLatLng?.let { PulsatingLocationMarker(it) }
 
+        // 🔥 FIX: Show station markers ONLY when no destination is selected
+        // This prevents clutter when user has already picked a station
         if (destinationLatLng == null && cameraPositionState.position.zoom >= 11f) {
             uiState.stations.forEach { station ->
-                key(station.name + station.latitude) {
+                key("${station.name}-${station.latitude}") {
                     StationMarker(
-                        position = LatLng(station.latitude, station.longitude),
-                        title = station.name,
-                        icon = pinIcon,
-                        darkTheme = darkTheme,
-                        onSelect = {
-                            mapViewModel.setDestination(station)
-                            stepperViewModel.selectStation(
-                                station.name,
-                                station.latitude,
-                                station.longitude
-                            )
-                        }
-                    )
+                        LatLng(station.latitude, station.longitude),
+                        station.name,
+                        pinIcon,
+                        darkTheme
+                    ) {
+                        mapViewModel.setDestination(station)
+                        stepperViewModel.selectStation(
+                            station.name,
+                            station.latitude,
+                            station.longitude
+                        )
+                    }
                 }
             }
         }
 
-        destinationLatLng?.let {
-            Marker(state = MarkerState(it), icon = purpleIcon)
+        // 🔥 FIX: Show destination marker whenever a destination is selected
+        // (regardless of whether alarm is active - that check happens in the ViewModel broadcast handler)
+        if (destinationLatLng != null) {
+            Marker(state = MarkerState(destinationLatLng), icon = purpleIcon)
             Circle(
-                center = it,
+                center = destinationLatLng,
                 radius = 300.0,
-                fillColor = Color(0x446F66E3),
+                fillColor = Color(0x336F66E3),
                 strokeColor = Color(0xFF6F66E3),
-                strokeWidth = 2f
+                strokeWidth = 3f
             )
         }
     }

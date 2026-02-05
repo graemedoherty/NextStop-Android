@@ -17,7 +17,6 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -25,7 +24,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.Devices
 import com.example.nextstop_android.R
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 private val fontPatterns = mapOf(
     'N' to listOf(listOf(1,0,0,0,1), listOf(1,1,0,0,1), listOf(1,0,1,0,1), listOf(1,0,0,1,1), listOf(1,0,0,0,1), listOf(1,0,0,0,1), listOf(1,0,0,0,1)),
@@ -57,7 +55,6 @@ fun LEDChar(char: Char, color: Color, dotSize: Float, dotGap: Float) {
                                         drawIntoCanvas { canvas ->
                                             val paint = Paint().asFrameworkPaint()
                                             paint.color = glowColor.toArgb()
-                                            // Soft bloom effect
                                             paint.maskFilter = BlurMaskFilter(12f, BlurMaskFilter.Blur.NORMAL)
                                             canvas.nativeCanvas.drawCircle(
                                                 size.width / 2,
@@ -79,49 +76,70 @@ fun LEDChar(char: Char, color: Color, dotSize: Float, dotGap: Float) {
 
 @Composable
 fun LEDMatrixSplashScreen(onTimeout: () -> Unit) {
-    val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp.dp
+    // 🔥 OPTIMIZED: Simpler, faster animation
+    // - Removed scrolling text (was 3.8s)
+    // - Just fade in logo (0.8s)
+    // - Show for 1.2s total
+    // - Exit animation handled by MainActivity (0.6s)
+    // Total: ~2 seconds instead of 7+ seconds
 
-    var phase by remember { mutableIntStateOf(1) }
-    val scrollOffset = remember { Animatable(screenWidth.value + 300f) }
-    val globalFadeAlpha = remember { Animatable(0f) }
-    val textFadeAlpha = remember { Animatable(0f) }
+    val fadeAlpha = remember { Animatable(0f) }
 
     LaunchedEffect(Unit) {
-        launch { globalFadeAlpha.animateTo(1f, tween(1500)) }
-        scrollOffset.animateTo(targetValue = -screenWidth.value - 400f, animationSpec = tween(3800, easing = LinearEasing))
-        phase = 2
-        textFadeAlpha.animateTo(1f, tween(1200))
-        delay(2000)
+        // Fade in quickly
+        fadeAlpha.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(800, easing = FastOutSlowInEasing)
+        )
+        // Show splash for just 1.2 seconds
+        delay(1200)
+        // Trigger exit (MainActivity handles the slide-out animation)
         onTimeout()
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black),
+        contentAlignment = Alignment.Center
+    ) {
+        // Bottom: App icon and version
         Column(
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 64.dp).graphicsLayer { alpha = globalFadeAlpha.value },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 64.dp)
+                .graphicsLayer { alpha = fadeAlpha.value },
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Image(painter = painterResource(id = R.drawable.white_app_icon), contentDescription = null, modifier = Modifier.size(54.dp))
+            Image(
+                painter = painterResource(id = R.drawable.white_app_icon),
+                contentDescription = null,
+                modifier = Modifier.size(54.dp)
+            )
             Spacer(modifier = Modifier.height(16.dp))
-            Text(text = "v1.0.0", color = Color.DarkGray, fontSize = 11.sp, letterSpacing = 1.sp)
+            Text(
+                text = "v1.0.0",
+                color = Color.DarkGray,
+                fontSize = 11.sp,
+                letterSpacing = 1.sp
+            )
         }
 
-        Box(contentAlignment = Alignment.Center) {
-            val content: @Composable () -> Unit = {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    "NEXT STOP".forEach { LEDChar(it, Color.White, 3.5f, 1.5f) }
+        // Center: LED Matrix "NEXT STOP" logo
+        Box(
+            modifier = Modifier.graphicsLayer { alpha = fadeAlpha.value },
+            contentAlignment = Alignment.Center
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                "NEXT STOP".forEach { char ->
+                    LEDChar(char, Color.White, 3.5f, 1.5f)
                 }
-            }
-            if (phase == 1) {
-                Box(modifier = Modifier.graphicsLayer { translationX = scrollOffset.value.dp.toPx() }) { content() }
-            } else {
-                Box(modifier = Modifier.graphicsLayer { alpha = textFadeAlpha.value }) { content() }
             }
         }
     }
 }
 
-@Preview(name = "Full Splash Screen", device = Devices.PIXEL_4, showBackground = true)
+@Preview(name = "Optimized Splash Screen", device = Devices.PIXEL_4, showBackground = true)
 @Composable
 fun PreviewSplashScreen() {
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
