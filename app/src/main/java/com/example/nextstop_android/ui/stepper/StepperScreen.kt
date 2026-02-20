@@ -126,6 +126,7 @@ fun StepperScreen(
                     3 -> Step3Screen(
                         selectedTransport = selectedTransport ?: "",
                         selectedStation = selectedStation?.name ?: "",
+                        distanceMeters = mapUiState.distanceToDestination, // 🆕 Pass distance to Step 3
                         onAlarmSet = {
                             selectedStation?.let { station ->
                                 onAlarmCreated(station)

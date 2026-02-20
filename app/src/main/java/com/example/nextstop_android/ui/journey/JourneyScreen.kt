@@ -64,7 +64,7 @@ fun JourneyScreen(
     val scope = rememberCoroutineScope()
     var showAboutScreen by remember { mutableStateOf(false) }
 
-    // --- 🔑 PERMISSION LAUNCHERS (Kept Intact) ---
+    // --- Permissions Launcher ---
     val locationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { stepperViewModel.checkPermissions(context) }
@@ -73,7 +73,6 @@ fun JourneyScreen(
         ActivityResultContracts.RequestPermission()
     ) { stepperViewModel.checkPermissions(context) }
 
-    // --- 🔑 LIFECYCLE OBSERVER (Kept Intact) ---
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -84,10 +83,7 @@ fun JourneyScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // 🔑 THE FIX: Removed the 'return' block that was destroying the Map.
-
     Box(modifier = Modifier.fillMaxSize()) {
-        // --- LAYER 1: MAIN CONTENT (Stays mounted in background) ---
         ModalNavigationDrawer(
             drawerState = drawerState,
             gesturesEnabled = false,
@@ -103,21 +99,19 @@ fun JourneyScreen(
                 )
             }
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-            ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                // ─── MAIN CONTENT LAYOUT ───
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .statusBarsPadding()
-                        .navigationBarsPadding()
+                        .background(MaterialTheme.colorScheme.background)
+                        .statusBarsPadding() // Apply status bar padding to entire column
                 ) {
+                    // 1. TOP: Stepper Section - INCREASED HEIGHT
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .fillMaxHeight(0.32f)
+                            .fillMaxHeight(0.35f) // 🔥 Increased from 0.32f to 0.35f for more breathing room
                             .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
                             .background(MaterialTheme.colorScheme.surface)
                     ) {
@@ -130,10 +124,11 @@ fun JourneyScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
+                    // 2. MIDDLE: Map Section - Takes remaining space minus ad height
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f)
+                            .weight(1f) // Map takes all remaining space
                             .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
                     ) {
                         MapsScreen(
@@ -142,6 +137,7 @@ fun JourneyScreen(
                             stepperViewModel = stepperViewModel
                         )
 
+                        // Burger button inside Map Box
                         BurgerMenuButton(
                             onClick = { scope.launch { drawerState.open() } },
                             modifier = Modifier
@@ -151,53 +147,50 @@ fun JourneyScreen(
                     }
                 }
 
-                // --- LAYER 2: ADS (Kept Intact) ---
+                // 3. BOTTOM: Ad Banner - OVERLAID at bottom
+                // 🔥 Changed to overlay instead of taking up column space
                 Box(
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
                         .fillMaxWidth()
-                        .padding(bottom = 16.dp)
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
+                        .padding(bottom = 8.dp), // Small padding from bottom
+                    contentAlignment = Alignment.Center
                 ) {
                     AdBanner(modifier = Modifier.fillMaxWidth())
-                }
-
-                // --- LAYER 3: ONBOARDING GATE (Kept Intact) ---
-                if (stepperViewModel.showPermissionOverlay) {
-                    PermissionOverlay(
-                        pageIndex = stepperViewModel.onboardingPage,
-                        title = stepperViewModel.permissionTitle,
-                        description = stepperViewModel.permissionDescription,
-                        buttonText = stepperViewModel.permissionButtonText,
-                        onAction = {
-                            stepperViewModel.handlePermissionRequest(
-                                context = context,
-                                onLaunchLocation = {
-                                    locationLauncher.launch(
-                                        arrayOf(
-                                            Manifest.permission.ACCESS_FINE_LOCATION,
-                                            Manifest.permission.ACCESS_COARSE_LOCATION
-                                        )
-                                    )
-                                },
-                                onLaunchNotifications = {
-                                    if (Build.VERSION.SDK_INT >= 33) {
-                                        notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                    }
-                                }
-                            )
-                        }
-                    )
                 }
             }
         }
 
-        // --- LAYER 4: ABOUT SCREEN (Animated Overlay) ---
-        // 🔑 Placing this last ensures it is on top, but the Map stays alive underneath.
-        AnimatedVisibility(
-            visible = showAboutScreen,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
+        // --- Overlays (Permissions & About) ---
+        if (stepperViewModel.showPermissionOverlay) {
+            PermissionOverlay(
+                pageIndex = stepperViewModel.onboardingPage,
+                title = stepperViewModel.permissionTitle,
+                description = stepperViewModel.permissionDescription,
+                buttonText = stepperViewModel.permissionButtonText,
+                onAction = {
+                    stepperViewModel.handlePermissionRequest(
+                        context = context,
+                        onLaunchLocation = {
+                            locationLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION
+                                )
+                            )
+                        },
+                        onLaunchNotifications = {
+                            if (Build.VERSION.SDK_INT >= 33) {
+                                notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
+                        }
+                    )
+                }
+            )
+        }
+
+        AnimatedVisibility(visible = showAboutScreen, enter = fadeIn(), exit = fadeOut()) {
             Surface(
                 modifier = Modifier.fillMaxSize(),
                 color = MaterialTheme.colorScheme.background

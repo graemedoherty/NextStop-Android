@@ -54,14 +54,13 @@ fun Step4Screen(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
+
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .wrapContentHeight(),
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 2.dp,
-            shadowElevation = 8.dp
+            shape = RoundedCornerShape(12.dp), // Same as Steps 2 & 3
+            color = themePurple.copy(alpha = 0.12f) // Same purple background
         ) {
             Column(
                 modifier = Modifier.padding(16.dp)
@@ -75,19 +74,20 @@ fun Step4Screen(
                     // Left: Destination Details (Weighted to take available space)
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
+                            text = "Destination",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
                             text = destinationName,
                             fontSize = 19.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 2, // Protects against height overflow
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                             lineHeight = 22.sp
                         )
-                        Text(
-                            text = "Your destination",
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+
                     }
 
                     Spacer(modifier = Modifier.width(8.dp))

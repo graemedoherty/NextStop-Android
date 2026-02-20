@@ -24,11 +24,14 @@ fun AdBanner(
         modifier = modifier
             .fillMaxWidth()
             .height(50.dp)
-            .background(Color.Black),
+            // ⚡ THE FIX: Change background to Transparent to allow the map to show through
+            .background(Color.Transparent),
         factory = { ctx ->
             AdView(ctx).apply {
                 setAdUnitId(adUnitId)
                 setAdSize(AdSize.BANNER)
+                // Ensure the underlying Android View doesn't have a solid background
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)
                 loadAd(AdRequest.Builder().build())
             }
         }
