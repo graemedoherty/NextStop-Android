@@ -63,7 +63,6 @@ import com.google.maps.android.compose.MarkerInfoWindow
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 
@@ -140,14 +139,12 @@ fun PulsatingLocationMarker(position: LatLng) {
     val infiniteTransition = rememberInfiniteTransition(label = "Pulse")
     val dotIcon = remember { coreDotIcon() }
     val scale by infiniteTransition.animateFloat(
-        0f,
-        1f,
+        0f, 1f,
         infiniteRepeatable(tween(2500, easing = LinearEasing)),
         label = "Scale"
     )
     val alpha by infiniteTransition.animateFloat(
-        0.4f,
-        0f,
+        0.4f, 0f,
         infiniteRepeatable(tween(2500, easing = LinearEasing)),
         label = "Alpha"
     )
@@ -172,10 +169,7 @@ private fun StationMarker(
     val markerState = rememberMarkerState(position = position)
     MarkerInfoWindow(state = markerState, icon = icon, onInfoWindowClick = { onSelect() }) {
         Image(bitmap = remember(title, darkTheme) {
-            infoWindowBitmap(
-                title,
-                darkTheme
-            )
+            infoWindowBitmap(title, darkTheme)
         }.asImageBitmap(), contentDescription = null, modifier = Modifier.width(320.dp))
     }
 }
@@ -197,16 +191,13 @@ fun MapsScreen(
     val selectedTransport by stepperViewModel.selectedTransport.collectAsState()
     val transportConfirmed by stepperViewModel.transportConfirmed.collectAsState()
 
-    // ⚡ GATE: Temporarily lock camera to User Location on launch
-    var isCameraLockedToUser by remember { mutableStateOf(true) }
-
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
     DisposableEffect(isOverlayShowing) {
         val hasPermission = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION
+            context, Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
+
         if (hasPermission && !isOverlayShowing) {
             val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 2000)
                 .setMinUpdateIntervalMillis(1000)
@@ -232,29 +223,25 @@ fun MapsScreen(
     }
 
     val userLatLng = uiState.userLocation?.let { LatLng(it.first, it.second) }
+    val destinationLatLng = uiState.destinationLocation?.let { LatLng(it.first, it.second) }
 
-    // 🔥 FIX: Show destination if it exists (selected OR alarm active)
-    // This preserves the original behavior where selecting a station shows it immediately
-    val destinationLatLng = uiState.destinationLocation?.let {
-        LatLng(it.first, it.second)
-    }
+    // 🔥 FIX: Track whether initial centering has happened
+    var hasPerformedInitialCenter by remember { mutableStateOf(false) }
 
-    // 🔥 CRITICAL FIX: Only snap to user location on FIRST valid GPS reading
+    // 🔥 LOGIC 1: Initial snap to User Location ONCE on first GPS lock
     LaunchedEffect(userLatLng) {
         if (userLatLng != null && !mapViewModel.hasInitialCenterPerformed) {
             cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(userLatLng, 15f))
             mapViewModel.hasInitialCenterPerformed = true
-
-            // Wait 2 seconds for GPS to stabilize before allowing destination panning
-            delay(2000)
-            isCameraLockedToUser = false
+            hasPerformedInitialCenter = true
         }
     }
 
-    // 🔥 FIX: Pan to show both user and destination when destination is selected
-    // But ONLY if we're not in the initial lock period AND destination actually exists
-    LaunchedEffect(userLatLng, destinationLatLng, isCameraLockedToUser) {
-        if (!isCameraLockedToUser &&
+    // 🔥 LOGIC 2: Pan to show BOTH user and destination when destination is selected
+    // KEY FIX: Only check hasPerformedInitialCenter, NOT a time-based lock
+    // This allows immediate panning when user selects a station
+    LaunchedEffect(destinationLatLng, userLatLng, hasPerformedInitialCenter) {
+        if (hasPerformedInitialCenter &&
             userLatLng != null &&
             destinationLatLng != null
         ) {
@@ -266,7 +253,7 @@ fun MapsScreen(
         }
     }
 
-    // --- Station Loading ---
+    // --- Station Logic ---
     LaunchedEffect(selectedTransport, transportConfirmed) {
         if (transportConfirmed && selectedTransport != null) {
             stationViewModel.loadStations(selectedTransport!!)
@@ -302,8 +289,7 @@ fun MapsScreen(
             isMyLocationEnabled = false,
             mapStyleOptions = try {
                 MapStyleOptions.loadRawResourceStyle(
-                    context,
-                    if (darkTheme) R.raw.map_dark_style else R.raw.map_light_style
+                    context, if (darkTheme) R.raw.map_dark_style else R.raw.map_light_style
                 )
             } catch (e: Exception) {
                 null
@@ -311,19 +297,15 @@ fun MapsScreen(
         ),
         uiSettings = MapUiSettings(myLocationButtonEnabled = false, zoomControlsEnabled = false)
     ) {
-        // Always show user location if available
         userLatLng?.let { PulsatingLocationMarker(it) }
 
-        // 🔥 FIX: Show station markers ONLY when no destination is selected
-        // This prevents clutter when user has already picked a station
+        // Show station pins ONLY if no destination is active
         if (destinationLatLng == null && cameraPositionState.position.zoom >= 11f) {
             uiState.stations.forEach { station ->
                 key("${station.name}-${station.latitude}") {
                     StationMarker(
                         LatLng(station.latitude, station.longitude),
-                        station.name,
-                        pinIcon,
-                        darkTheme
+                        station.name, pinIcon, darkTheme
                     ) {
                         mapViewModel.setDestination(station)
                         stepperViewModel.selectStation(
@@ -336,12 +318,11 @@ fun MapsScreen(
             }
         }
 
-        // 🔥 FIX: Show destination marker whenever a destination is selected
-        // (regardless of whether alarm is active - that check happens in the ViewModel broadcast handler)
-        if (destinationLatLng != null) {
-            Marker(state = MarkerState(destinationLatLng), icon = purpleIcon)
+        // Destination Marker & Radius
+        destinationLatLng?.let {
+            Marker(state = MarkerState(it), icon = purpleIcon)
             Circle(
-                center = destinationLatLng,
+                center = it,
                 radius = 300.0,
                 fillColor = Color(0x336F66E3),
                 strokeColor = Color(0xFF6F66E3),

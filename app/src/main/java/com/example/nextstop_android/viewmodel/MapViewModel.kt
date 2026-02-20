@@ -5,8 +5,10 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.nextstop_android.model.Station
 import com.example.nextstop_android.service.LocationTrackingService
 import com.example.nextstop_android.viewmodel.StepperViewModel
@@ -14,6 +16,13 @@ import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.roundToInt
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 class MapViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -23,15 +32,11 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(MapUiState())
     val uiState: StateFlow<MapUiState> = _uiState
 
-    // ⚡ Controls the "One-time" snap to user location
     var hasInitialCenterPerformed = false
-
-    // 🔥 FIX: Flag to prevent broadcasts from overwriting the reset
     private var isResetting = false
 
     private val distanceReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            // 🔥 FIX: Ignore broadcasts during reset
             if (isResetting) return
 
             if (intent == null) return
@@ -39,7 +44,6 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             val lat = intent.getDoubleExtra("user_lat", 0.0)
             val lng = intent.getDoubleExtra("user_lng", 0.0)
 
-            // 🔥 FIX: Only update tracking if we actually have an active alarm
             if (_uiState.value.alarmActive) {
                 updateTracking(lat, lng, distance)
             }
@@ -53,25 +57,25 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     init {
-        // 🔥 CRITICAL FIX: Force kill any lingering service FIRST
-        // This ensures no old broadcasts can come through
         val killServiceIntent = Intent(appContext, LocationTrackingService::class.java).apply {
             action = LocationTrackingService.ACTION_STOP
         }
         try {
             appContext.startService(killServiceIntent)
         } catch (e: Exception) {
-            // Service might not be running, that's fine
+            // Service might not be running
         }
 
-        // 🔥 FIX: Clear everything on fresh start
         resetAllState()
 
         try {
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                 location?.let {
-                    // 🔥 FIX: Only set if we don't already have a location AND we're not resetting
                     if (_uiState.value.userLocation == null && !isResetting) {
+                        Log.d(
+                            "MapViewModel",
+                            "Initial location from FusedLocation: ${it.latitude}, ${it.longitude}"
+                        )
                         updateUserLocation(it.latitude, it.longitude)
                     }
                 }
@@ -108,13 +112,51 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setDestination(station: Station) {
+        Log.d("MapViewModel", "setDestination called for: ${station.name}")
+
+        val currentUserLocation = _uiState.value.userLocation
+        Log.d("MapViewModel", "Current user location: $currentUserLocation")
+
+        val initialDistance = if (currentUserLocation != null) {
+            val dist = calculateDistance(
+                currentUserLocation.first,
+                currentUserLocation.second,
+                station.latitude,
+                station.longitude
+            )
+            Log.d("MapViewModel", "Calculated distance: $dist meters")
+            dist
+        } else {
+            Log.w("MapViewModel", "User location is NULL - cannot calculate distance yet")
+            -1
+        }
+
         _uiState.update {
             it.copy(
                 selectedStation = station,
                 destinationLocation = station.latitude to station.longitude,
-                distanceToDestination = -1,
+                distanceToDestination = initialDistance,
                 stations = emptyList()
             )
+        }
+
+        // 🔥 NEW FIX: If user location is null, try to get it immediately
+        if (currentUserLocation == null) {
+            Log.d("MapViewModel", "Attempting to fetch location immediately...")
+            viewModelScope.launch {
+                try {
+                    fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                        location?.let {
+                            Log.d("MapViewModel", "Got location, recalculating distance")
+                            updateUserLocation(it.latitude, it.longitude)
+                        } ?: run {
+                            Log.w("MapViewModel", "Location is still null after request")
+                        }
+                    }
+                } catch (e: SecurityException) {
+                    Log.e("MapViewModel", "Security exception getting location", e)
+                }
+            }
         }
     }
 
@@ -134,7 +176,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun startAlarm(station: Station) {
-        isResetting = false // Re-enable broadcasts
+        isResetting = false
         _uiState.update {
             it.copy(
                 selectedStation = station,
@@ -149,16 +191,36 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updateUserLocation(latitude: Double, longitude: Double) {
-        // 🔥 FIX: Don't update location if we're in the middle of resetting
         if (isResetting) return
 
+        Log.d("MapViewModel", "updateUserLocation: $latitude, $longitude")
+
+        val currentState = _uiState.value
+
+        // 🔥 CRITICAL FIX: Recalculate distance if we have a destination but no active alarm
+        val newDistance =
+            if (currentState.destinationLocation != null && !currentState.alarmActive) {
+                val dist = calculateDistance(
+                    latitude,
+                    longitude,
+                    currentState.destinationLocation.first,
+                    currentState.destinationLocation.second
+                )
+                Log.d("MapViewModel", "Recalculated distance after location update: $dist meters")
+                dist
+            } else {
+                currentState.distanceToDestination
+            }
+
         _uiState.update {
-            it.copy(userLocation = latitude to longitude)
+            it.copy(
+                userLocation = latitude to longitude,
+                distanceToDestination = newDistance
+            )
         }
     }
 
     fun updateTracking(latitude: Double, longitude: Double, distanceMeters: Int) {
-        // 🔥 FIX: Don't update tracking if we're resetting or alarm isn't active
         if (isResetting || !_uiState.value.alarmActive) return
 
         val arrived = distanceMeters in 0..LocationTrackingService.ARRIVAL_THRESHOLD_METERS
@@ -181,20 +243,32 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun resetAllState() {
-        // 🔥 FIX: Set flag to block any incoming broadcasts during reset
         isResetting = true
-
         hasInitialCenterPerformed = false
 
-        // 🔥 CRITICAL FIX: Don't preserve old location - start completely fresh
-        // The old code was preserving userLocation, which kept the map centered on the old spot
         _uiState.value = MapUiState()
 
-        // 🔥 FIX: Allow broadcasts again after a short delay
-        // This prevents race conditions with service broadcasts
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             isResetting = false
-        }, 1000) // Increased to 1 second for extra safety
+        }, 1000)
+    }
+
+    private fun calculateDistance(
+        lat1: Double,
+        lon1: Double,
+        lat2: Double,
+        lon2: Double
+    ): Int {
+        val r = 6371000.0 // Earth radius in meters
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+
+        val a = sin(dLat / 2).pow(2) +
+                cos(Math.toRadians(lat1)) *
+                cos(Math.toRadians(lat2)) *
+                sin(dLon / 2).pow(2)
+
+        return (2 * r * atan2(sqrt(a), sqrt(1 - a))).roundToInt()
     }
 
     override fun onCleared() {
