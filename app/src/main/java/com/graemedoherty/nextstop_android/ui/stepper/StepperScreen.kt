@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -61,6 +62,12 @@ fun StepperScreen(
     val stationViewModel: StationViewModel = viewModel(
         factory = StationViewModelFactory(context)
     )
+
+    // ⚡️ FIX: When the transport mode changes, clear the map's destination 
+    // to allow new station markers to show up and remove the old selection.
+    LaunchedEffect(selectedTransport) {
+        mapViewModel.clearDestination()
+    }
 
     val themePurple = Color(0xFF6F66E3)
 

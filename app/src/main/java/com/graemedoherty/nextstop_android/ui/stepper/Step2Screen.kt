@@ -1,6 +1,5 @@
 package com.graemedoherty.nextstop_android.ui.stepper
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,7 +13,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -22,6 +20,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,7 +38,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
 import com.graemedoherty.nextstop_android.data.StationDataLoader
 import com.graemedoherty.nextstop_android.model.Station
 import com.graemedoherty.nextstop_android.ui.components.PrimaryButton
@@ -67,6 +65,7 @@ fun Step2Screen(
     val onSurfaceText = MaterialTheme.colorScheme.onSurface
     val onSurfaceVariantText = MaterialTheme.colorScheme.onSurfaceVariant
 
+    // ⚡️ RE-CALCULATE markers whenever the transport mode changes
     val stationDataList = remember(selectedTransport) {
         when (selectedTransport) {
             "Train" -> dataLoader.loadTrainStations()
@@ -77,21 +76,23 @@ fun Step2Screen(
     }
 
     var searchText by remember { mutableStateOf("") }
-    val filteredStations = remember(searchText, selectedTransport) {
+
+    // Clear search and ensure map markers are fresh when navigating
+    LaunchedEffect(savedStation, selectedTransport) {
+        if (savedStation != null) {
+            searchText = ""
+        }
+    }
+
+    val filteredStations = remember(searchText, stationDataList) {
         if (searchText.length < 2) emptyList()
         else stationDataList.map { it.name }.filter { it.contains(searchText, ignoreCase = true) }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            // --- TOP CONTENT ---
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .padding(horizontal = 16.dp, vertical = 4.dp)) {
+        Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
             Box(modifier = Modifier.fillMaxWidth()) {
                 if (savedStation == null) {
                     OutlinedTextField(
@@ -101,23 +102,15 @@ fun Step2Screen(
                             .fillMaxWidth()
                             .height(56.dp),
                         textStyle = TextStyle(fontSize = 16.sp, color = onSurfaceText),
-                        placeholder = {
-                            Text(
-                                "Search Station...",
-                                color = onSurfaceVariantText,
-                                fontSize = 16.sp
-                            )
-                        },
+                        placeholder = { Text("Search Station...", color = onSurfaceVariantText) },
                         shape = RoundedCornerShape(12.dp),
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             cursorColor = themePurple,
-                            focusedBorderColor = themePurple,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                            focusedBorderColor = themePurple
                         )
                     )
                 } else {
-                    // 🔑 Removed border, kept the background color
                     Surface(
                         shape = RoundedCornerShape(12.dp),
                         color = themePurple.copy(alpha = 0.12f),
@@ -130,13 +123,13 @@ fun Step2Screen(
                         ) {
                             Column {
                                 Text(
-                                    text = "Selected Station:",
+                                    "Selected Station:",
                                     fontSize = 10.sp,
                                     color = themePurple,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = savedStation.name,
+                                    savedStation.name,
                                     fontSize = 16.sp,
                                     color = onSurfaceText,
                                     fontWeight = FontWeight.Bold
@@ -149,13 +142,8 @@ fun Step2Screen(
                     }
                 }
 
-                // --- DROPDOWN ---
                 if (filteredStations.isNotEmpty() && savedStation == null) {
-                    Popup(
-                        alignment = Alignment.TopCenter,
-                        offset = IntOffset(0, 165),
-                        properties = PopupProperties(dismissOnClickOutside = true)
-                    ) {
+                    Popup(alignment = Alignment.TopCenter, offset = IntOffset(0, 165)) {
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -163,9 +151,7 @@ fun Step2Screen(
                                 .heightIn(max = 200.dp),
                             shape = RoundedCornerShape(12.dp),
                             tonalElevation = 8.dp,
-                            shadowElevation = 10.dp,
-                            color = MaterialTheme.colorScheme.surface,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                            shadowElevation = 10.dp
                         ) {
                             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                                 filteredStations.take(10).forEach { stationName ->
@@ -182,18 +168,13 @@ fun Step2Screen(
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Text(
-                                            text = stationName,
+                                            stationName,
                                             modifier = Modifier.fillMaxWidth(),
                                             fontSize = 14.sp,
                                             color = onSurfaceText,
                                             textAlign = TextAlign.Start
                                         )
                                     }
-                                    HorizontalDivider(
-                                        color = MaterialTheme.colorScheme.outlineVariant.copy(
-                                            alpha = 0.4f
-                                        )
-                                    )
                                 }
                             }
                         }
@@ -201,22 +182,15 @@ fun Step2Screen(
                 }
             }
 
-            // --- NAVIGATION ---
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // 🔑 Now using your unified SecondaryButton component
-                SecondaryButton(
-                    text = "Back",
-                    onClick = onBack,
-                    modifier = Modifier.weight(1f)
-                )
-
+                SecondaryButton("Back", onClick = onBack, modifier = Modifier.weight(1f))
                 PrimaryButton(
-                    text = "Next",
+                    "Next",
                     enabled = savedStation != null,
                     onClick = onNext,
                     modifier = Modifier.weight(1f)
