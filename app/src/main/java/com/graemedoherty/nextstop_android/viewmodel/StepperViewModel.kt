@@ -59,9 +59,6 @@ class StepperViewModel : ViewModel() {
             .getBoolean("onboarding_finished", false)
     }
 
-    /**
-     * 🔑 THE FIX: Explicitly named parameters to allow 'title = ...' style calls
-     */
     private fun updateUI(title: String, description: String, buttonText: String) {
         this.permissionTitle = title
         this.permissionDescription = description
@@ -81,62 +78,16 @@ class StepperViewModel : ViewModel() {
         val hasOverlay = Settings.canDrawOverlays(context)
 
         when {
-            onboardingPage == 0 -> updateUI(
-                title = "Welcome to Next Stop",
-                description = """
-        Quick Setup Guide.
-        
-        To alert you at just the right moment, Next Stop needs a few quick permissions. 
-        Setup only takes a minute — and then you're good to go.
-        
-        How it works:
-        1. Choose your mode of travel.
-        2. Pick your destination from the dropdown or the interactive map.
-        3. Set your alarm.
-        4. Relax — we'll alert you when you are near your destination station.
-    """.trimIndent(),
-                buttonText = "Get Started"
-            )
-
-
-            onboardingPage == 1 && !hasLocation -> updateUI(
-                title = "Location Access",
-                description = """
-        We use your location to track your journey and calculate how close you are to your stop.
-        
-        Your location is only used while a trip is active.
-    """.trimIndent(),
-                buttonText = "Allow Location"
-            )
-
-
+            onboardingPage == 0 -> updateUI("Welcome", "Setup Guide...", "Get Started")
+            onboardingPage == 1 && !hasLocation -> updateUI("Location", "Description...", "Allow")
             onboardingPage == 2 && !hasNotifications -> updateUI(
-                title = "Notifications",
-                description = "This allows us to keep the tracking service active in the background while you relax or use other apps.",
-                buttonText = "Enable Notifications"
+                "Notifications",
+                "Description...",
+                "Enable"
             )
 
-            onboardingPage == 3 && !hasOverlay -> updateUI(
-                title = "Display Over Other Apps",
-                description = """
-        This allows your arrival alert to appear over apps like Google Maps or on your lock screen,
-        so you never miss it.
-    """.trimIndent(),
-                buttonText = "Enable Overlay"
-            )
-
-
-            onboardingPage == 4 -> updateUI(
-                title = "You're All Set",
-                description = """
-        Everything is ready to go.
-        
-        Choose your mode of transport, pick your destination station, and have a safe journey.
-    """.trimIndent(),
-                buttonText = "Start Your Journey"
-            )
-
-
+            onboardingPage == 3 && !hasOverlay -> updateUI("Overlay", "Description...", "Enable")
+            onboardingPage == 4 -> updateUI("Ready", "Description...", "Start")
             else -> {
                 if (onboardingPage < 4) {
                     onboardingPage++
@@ -189,19 +140,19 @@ class StepperViewModel : ViewModel() {
 
     fun resetToStep(s: Int) {
         _currentStep.value = s
-        if (s <= 2) clearStation()
-        if (s == 1) _transportConfirmed.value = false
     }
 
     fun goBack() {
         _currentStep.value = (_currentStep.value - 1).coerceAtLeast(1)
-        if (_currentStep.value <= 2) clearStation()
     }
 
+    // ⚡️ CRITICAL FIX: Explicitly resets the station whenever a DIFFERENT mode is picked.
     fun selectTransport(t: String) {
-        _selectedTransport.value = t
-        _transportConfirmed.value = false
-        clearStation()
+        if (_selectedTransport.value != t) {
+            _selectedTransport.value = t
+            _transportConfirmed.value = false
+            _selectedStation.value = null // Directly nulling the backing field for safety
+        }
     }
 
     fun selectStation(n: String, lat: Double, lon: Double) {
