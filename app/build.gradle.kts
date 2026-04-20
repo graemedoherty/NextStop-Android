@@ -14,11 +14,11 @@ if (localPropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.example.nextstop_android"
+    namespace = "com.graemedoherty.nextstop_android"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.nextstop_android"
+        applicationId = "com.graemedoherty.nextstop_android"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
