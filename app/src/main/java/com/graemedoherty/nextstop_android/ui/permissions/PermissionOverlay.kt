@@ -21,6 +21,7 @@ fun PermissionOverlay(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.85f))
+            // Prevents clicks from passing through to the map/UI behind the overlay
             .clickable(enabled = true, onClick = {}),
         contentAlignment = Alignment.Center
     ) {

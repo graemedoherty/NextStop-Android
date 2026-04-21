@@ -78,16 +78,37 @@ class StepperViewModel : ViewModel() {
         val hasOverlay = Settings.canDrawOverlays(context)
 
         when {
-            onboardingPage == 0 -> updateUI("Welcome", "Setup Guide...", "Get Started")
-            onboardingPage == 1 && !hasLocation -> updateUI("Location", "Description...", "Allow")
+            onboardingPage == 0 -> updateUI(
+                "Welcome",
+                "Next Stop needs a few quick permissions to alert you at the right moment.",
+                "Get Started"
+            )
+
+            onboardingPage == 1 && !hasLocation -> updateUI(
+                "Location Access",
+                "We use your location to calculate how close you are to your stop.",
+                "Allow Location"
+            )
+
             onboardingPage == 2 && !hasNotifications -> updateUI(
                 "Notifications",
-                "Description...",
+                "This allows us to send the alert while you use other apps.",
+                "Enable Notifications"
+            )
+
+            // 🔑 UPDATED: Clear instructions for the technical step
+            onboardingPage == 3 && !hasOverlay -> updateUI(
+                "Display Over Other Apps",
+                "1. Tap Enable below.\n2. Find 'Next Stop' in the list.\n3. Switch the toggle to ON.\n\nThis lets the alarm pop up even if your phone is locked.",
                 "Enable"
             )
 
-            onboardingPage == 3 && !hasOverlay -> updateUI("Overlay", "Description...", "Enable")
-            onboardingPage == 4 -> updateUI("Ready", "Description...", "Start")
+            onboardingPage == 4 -> updateUI(
+                "You're Ready!",
+                "Everything is setup correctly. Have a safe journey!",
+                "Start"
+            )
+
             else -> {
                 if (onboardingPage < 4) {
                     onboardingPage++
@@ -130,7 +151,6 @@ class StepperViewModel : ViewModel() {
         showPermissionOverlay = false
     }
 
-    /* ---------------- Standard Navigation ---------------- */
     fun nextStep() {
         if (_currentStep.value == 1 && _selectedTransport.value != null) {
             _transportConfirmed.value = true
@@ -146,12 +166,11 @@ class StepperViewModel : ViewModel() {
         _currentStep.value = (_currentStep.value - 1).coerceAtLeast(1)
     }
 
-    // ⚡️ CRITICAL FIX: Explicitly resets the station whenever a DIFFERENT mode is picked.
     fun selectTransport(t: String) {
         if (_selectedTransport.value != t) {
             _selectedTransport.value = t
             _transportConfirmed.value = false
-            _selectedStation.value = null // Directly nulling the backing field for safety
+            _selectedStation.value = null
         }
     }
 
