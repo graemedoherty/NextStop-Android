@@ -175,6 +175,8 @@ fun OverlayInstructionAnimation(purple: Color, mainText: Color) {
         label = "thumb"
     )
 
+    val isToggled = toggleOffset > 12.dp
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -199,23 +201,30 @@ fun OverlayInstructionAnimation(purple: Color, mainText: Color) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // 🔑 FIX: Swapped R.mipmap.ic_launcher for R.drawable.next_stop_logo
-                // painterResource cannot load Adaptive Icons (XML) directly.
                 Image(
                     painter = painterResource(id = R.drawable.next_stop_logo),
                     contentDescription = "App Logo",
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(36.dp)
                         .clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Fit
                 )
                 Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    "Next Stop",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = mainText
-                )
+                
+                Column {
+                    Text(
+                        "Next Stop",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = mainText
+                    )
+                    Text(
+                        text = if (isToggled) "Allowed" else "Not allowed",
+                        fontSize = 12.sp,
+                        color = if (isToggled) purple else mainText.copy(alpha = 0.5f),
+                        fontWeight = if (isToggled) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
             }
 
             // Toggle Track
@@ -224,7 +233,7 @@ fun OverlayInstructionAnimation(purple: Color, mainText: Color) {
                     .width(48.dp)
                     .height(26.dp)
                     .clip(CircleShape)
-                    .background(if (toggleOffset > 12.dp) purple else mainText.copy(alpha = 0.2f))
+                    .background(if (isToggled) purple else mainText.copy(alpha = 0.2f))
                     .padding(3.dp)
             ) {
                 // Toggle Thumb

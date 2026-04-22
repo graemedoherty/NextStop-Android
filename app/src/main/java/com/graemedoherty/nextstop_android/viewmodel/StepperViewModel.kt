@@ -1,6 +1,7 @@
 package com.graemedoherty.nextstop_android.viewmodel
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -11,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import com.graemedoherty.nextstop_android.model.Station
@@ -47,11 +49,44 @@ class StepperViewModel : ViewModel() {
     var permissionButtonText by mutableStateOf("")
         private set
 
+    /* ---------------- Permission Helpers ---------------- */
+
     private fun isPermissionGranted(context: Context, permission: String): Boolean {
         return ContextCompat.checkSelfPermission(
             context,
             permission
         ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    /**
+     * Determines if we should show the "Settings" button.
+     * Android returns 'false' for rationale if the user has checked "Don't ask again"
+     * OR if they've never been asked before.
+     */
+    private fun isPermanentlyDenied(context: Context, permission: String): Boolean {
+        val activity = context as? Activity ?: return false
+        val isGranted = isPermissionGranted(context, permission)
+
+        // This is the key: If it's NOT granted, AND the system says we shouldn't show the rationale,
+        // it means the user has already seen the popup and denied it permanently.
+        val shouldShowRationale =
+            ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)
+
+        // We only consider it "Hard Denied" if they've seen the popup at least once.
+        // On the very first run, shouldShowRationale is false, but we still want the popup.
+        // This logic ensures the popup gets a chance first.
+        return !isGranted && !shouldShowRationale && hasAskedBefore(context, permission)
+    }
+
+    // Small helper to track if we've triggered the system popup at least once
+    private fun hasAskedBefore(context: Context, permission: String): Boolean {
+        return context.getSharedPreferences("permission_prefs", Context.MODE_PRIVATE)
+            .getBoolean(permission, false)
+    }
+
+    private fun markAsAsked(context: Context, permission: String) {
+        context.getSharedPreferences("permission_prefs", Context.MODE_PRIVATE)
+            .edit().putBoolean(permission, true).apply()
     }
 
     private fun getOnboardingComplete(context: Context): Boolean {
@@ -64,6 +99,16 @@ class StepperViewModel : ViewModel() {
         this.permissionDescription = description
         this.permissionButtonText = buttonText
     }
+
+    private fun openAppSettings(context: Context) {
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.fromParts("package", context.packageName, null)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
+    }
+
+    /* ---------------- Permission Logic ---------------- */
 
     fun checkPermissions(context: Context) {
         if (getOnboardingComplete(context)) {
@@ -84,21 +129,36 @@ class StepperViewModel : ViewModel() {
                 "Get Started"
             )
 
-            onboardingPage == 1 && !hasLocation -> updateUI(
-                "Location Access",
-                "We use your location to calculate how close you are to your stop.",
-                "Allow Location"
-            )
+            onboardingPage == 1 && !hasLocation -> {
+                val isHardDenied =
+                    isPermanentlyDenied(context, Manifest.permission.ACCESS_FINE_LOCATION)
+                updateUI(
+                    title = "Location Access",
+                    description = if (isHardDenied) {
+                        "Location access is blocked. To fix this, please tap 'Open Settings' and enable Location permissions manually."
+                    } else {
+                        "We use your location to calculate how close you are to your stop."
+                    },
+                    buttonText = if (isHardDenied) "Open Settings" else "Allow Location"
+                )
+            }
 
-            onboardingPage == 2 && !hasNotifications -> updateUI(
-                "Notifications",
-                "This allows us to send the alert while you use other apps.",
-                "Enable Notifications"
-            )
+            onboardingPage == 2 && !hasNotifications && Build.VERSION.SDK_INT >= 33 -> {
+                val isHardDenied =
+                    isPermanentlyDenied(context, Manifest.permission.POST_NOTIFICATIONS)
+                updateUI(
+                    title = "Notifications",
+                    description = if (isHardDenied) {
+                        "Notifications are blocked. Please enable them in Settings to receive arrival alerts."
+                    } else {
+                        "This allows us to send the alert while you use other apps."
+                    },
+                    buttonText = if (isHardDenied) "Open Settings" else "Enable Notifications"
+                )
+            }
 
-            // 🔑 UPDATED: Clear instructions for the technical step
             onboardingPage == 3 && !hasOverlay -> updateUI(
-                "Display Over Other Apps",
+                "Display Next Stop Alarm Over Other Apps",
                 "1. Tap Enable below.\n2. Find 'Next Stop' in the list.\n3. Switch the toggle to ON.\n\nThis lets the alarm pop up even if your phone is locked.",
                 "Enable"
             )
@@ -128,11 +188,30 @@ class StepperViewModel : ViewModel() {
     ) {
         when (onboardingPage) {
             0 -> {
-                onboardingPage = 1; checkPermissions(context)
+                onboardingPage = 1
+                checkPermissions(context)
             }
 
-            1 -> onLaunchLocation()
-            2 -> onLaunchNotifications()
+            1 -> {
+                if (isPermanentlyDenied(context, Manifest.permission.ACCESS_FINE_LOCATION)) {
+                    openAppSettings(context)
+                } else {
+                    markAsAsked(context, Manifest.permission.ACCESS_FINE_LOCATION)
+                    onLaunchLocation()
+                }
+            }
+
+            2 -> {
+                if (Build.VERSION.SDK_INT >= 33) {
+                    if (isPermanentlyDenied(context, Manifest.permission.POST_NOTIFICATIONS)) {
+                        openAppSettings(context)
+                    } else {
+                        markAsAsked(context, Manifest.permission.POST_NOTIFICATIONS)
+                        onLaunchNotifications()
+                    }
+                }
+            }
+
             3 -> {
                 val intent = Intent(
                     Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
@@ -150,6 +229,8 @@ class StepperViewModel : ViewModel() {
             .edit().putBoolean("onboarding_finished", true).apply()
         showPermissionOverlay = false
     }
+
+    /* ---------------- Navigation Actions ---------------- */
 
     fun nextStep() {
         if (_currentStep.value == 1 && _selectedTransport.value != null) {
